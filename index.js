@@ -61,8 +61,12 @@ program
         }
         if (storeContent.includes('reducer: {') && !storeContent.includes(`${reducerKey}: ${reducerVar}`)) {
           storeContent = storeContent.replace(
-            /reducer: {/,
-            `reducer: {\n    ${reducerKey}: ${reducerVar},`
+            /reducer:\s*\{([^}]*)\}/s,
+            (_, inner) => {
+              const lines = inner.trim().split('\n').map(l => '    ' + l.trim()).filter(l => l.trim());
+              const existing = lines.length ? lines.join('\n') + '\n' : '';
+              return `reducer: {\n${existing}    ${reducerKey}: ${reducerVar},\n  }`;
+            }
           );
         }
       } else {
