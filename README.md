@@ -72,7 +72,7 @@ reduxapi make:api ContactForm -t create -u https://api.example.com/contact
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProducts, createProduct, reset ProductStatus } from 'james-redux-cli/slices/productSlice';
+import { fetchProducts, createProduct, resetProductStatus } from 'james-redux-cli/slices/productSlice';
 
 const dispatch = useDispatch();
 const { data, loading, error, success } = useSelector(state => state.product);
