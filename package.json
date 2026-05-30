@@ -1,19 +1,19 @@
 {
   "name": "james-redux-cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publishConfig": {
     "access": "public"
   },
-  "description": "",
+  "description": "A CLI tool that generates Redux Toolkit API slices and automatically wires them into your React store.",
   "main": "index.js",
   "bin": {
-    "reduxapi": "./index.js"
+    "reduxapi": "index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "James",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -26,5 +26,14 @@
     "@reduxjs/toolkit": "^2.11.2",
     "react": "^17.0.0 || ^18.0.0",
     "react-redux": "^9.2.0"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChristopherJamesLeo/reduxapi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ChristopherJamesLeo/reduxapi/issues"
+  },
+  "homepage": "https://github.com/ChristopherJamesLeo/reduxapi#readme"
 }
