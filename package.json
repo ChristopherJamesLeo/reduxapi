@@ -1,0 +1,30 @@
+{
+  "name": "james-redux-cli",
+  "version": "1.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "reduxapi": "./index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "chalk": "^4.1.2",
+    "commander": "^14.0.2",
+    "fs-extra": "^11.3.3"
+  },
+  "peerDependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
+    "react": "^17.0.0 || ^18.0.0",
+    "react-redux": "^9.2.0"
+  }
+}
