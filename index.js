@@ -5,10 +5,12 @@ const chalk = require('chalk');
 const path = require('path');
 
 const TEMPLATE_MAP = {
-  crud:   'crudSlice.js.t',
-  create: 'createApiSlice.js.t',
-  token:  'tokenSlice.js.t',
-  auth:   'authSlice.js.t',
+  crud:         'crudSlice.js.t',
+  create:       'createApiSlice.js.t',
+  token:        'tokenSlice.js.t',
+  auth:         'authSlice.js.t',
+  customheader: 'customHeaderSlice.js.t',
+  secretkey:    'secretKeySlice.js.t',
 };
 
 program

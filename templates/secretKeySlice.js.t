@@ -1,16 +1,32 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = '{{apiUrl}}/{{lowerName}}';
+const BASE_URL = '{{apiUrl}}';
+const SECRET_KEY_URL = `${BASE_URL}/get-secret-key`;
+const DATA_URL = `${BASE_URL}/{{lowerName}}`;
+
+// Step 1: fetch secret key → Step 2: use key in custom header to fetch real data
+const fetchWithSecretKey = async (requestFn) => {
+  const keyResponse = await axios.get(SECRET_KEY_URL);
+  const secretKey = keyResponse.data.secret_key;
+  return requestFn(secretKey);
+};
+
+const secureHeaders = (secretKey) => ({
+  'X-Custom-Secret-Key': secretKey,
+  'Accept': 'application/json',
+});
 
 export const fetch{{Name}}s = createAsyncThunk(
   '{{lowerName}}/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(API_URL);
-      return response.data;
+      return await fetchWithSecretKey(async (secretKey) => {
+        const response = await axios.get(DATA_URL, { headers: secureHeaders(secretKey) });
+        return response.data;
+      });
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue(error.response?.data ?? error.message);
     }
   }
 );
@@ -19,10 +35,12 @@ export const fetchPaginated{{Name}}s = createAsyncThunk(
   '{{lowerName}}/fetchPaginated',
   async (page = 1, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}?page=${page}`);
-      return response.data;
+      return await fetchWithSecretKey(async (secretKey) => {
+        const response = await axios.get(`${DATA_URL}?page=${page}`, { headers: secureHeaders(secretKey) });
+        return response.data;
+      });
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue(error.response?.data ?? error.message);
     }
   }
 );
@@ -31,10 +49,12 @@ export const create{{Name}} = createAsyncThunk(
   '{{lowerName}}/create',
   async (newData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(API_URL, newData);
-      return response.data;
+      return await fetchWithSecretKey(async (secretKey) => {
+        const response = await axios.post(DATA_URL, newData, { headers: secureHeaders(secretKey) });
+        return response.data;
+      });
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue(error.response?.data ?? error.message);
     }
   }
 );
@@ -43,10 +63,12 @@ export const update{{Name}} = createAsyncThunk(
   '{{lowerName}}/update',
   async ({ id, updateData }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/${id}`, updateData);
-      return response.data;
+      return await fetchWithSecretKey(async (secretKey) => {
+        const response = await axios.put(`${DATA_URL}/${id}`, updateData, { headers: secureHeaders(secretKey) });
+        return response.data;
+      });
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue(error.response?.data ?? error.message);
     }
   }
 );
@@ -55,10 +77,12 @@ export const delete{{Name}} = createAsyncThunk(
   '{{lowerName}}/delete',
   async (id, { rejectWithValue }) => {
     try {
-      await axios.delete(`${API_URL}/${id}`);
-      return id;
+      return await fetchWithSecretKey(async (secretKey) => {
+        await axios.delete(`${DATA_URL}/${id}`, { headers: secureHeaders(secretKey) });
+        return id;
+      });
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue(error.response?.data ?? error.message);
     }
   }
 );
@@ -133,7 +157,7 @@ const {{lowerName}}Slice = createSlice({
       .addCase(delete{{Name}}.fulfilled, (state, action) => {
         state.loading = false;
         state.data = state.data.filter(item => item.id !== action.payload);
-        state.meta.total -= 1;
+        if (state.meta) state.meta.total -= 1;
         state.success = true;
       })
       .addCase(delete{{Name}}.rejected, (state, action) => {
@@ -145,7 +169,3 @@ const {{lowerName}}Slice = createSlice({
 
 export const { reset{{Name}}Status } = {{lowerName}}Slice.actions;
 export default {{lowerName}}Slice.reducer;
-
-// Usage:
-// fetchAll   → dispatch(fetch{{Name}}s())             → state.data = [...]
-// paginated  → dispatch(fetchPaginated{{Name}}s(page)) → state.data / state.links / state.meta
