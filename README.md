@@ -1,11 +1,11 @@
-# james-redux-cli
+# redux-api-helper
 
 A CLI tool that generates Redux Toolkit API slices and automatically wires them into your React store.
 
 ## Installation
 
 ```bash
-npm install james-redux-cli
+npm install redux-api-helper
 ```
 
 ## Requirements
@@ -85,14 +85,14 @@ Every request automatically fetches a fresh secret key from `GET /get-secret-key
 
 ## How It Works
 
-1. Generates a slice file inside `node_modules/james-redux-cli/slices/`.
+1. Generates a slice file inside `node_modules/redux-api-helper/slices/`.
 2. Automatically adds the import and reducer entry to `src/store/store.js` in your project (creates the file if it doesn't exist).
 
 ### Example — importing in your React components
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProducts, createProduct, resetProductStatus } from 'james-redux-cli/slices/productSlice';
+import { fetchProducts, createProduct, resetProductStatus } from 'redux-api-helper/slices/productSlice';
 
 const dispatch = useDispatch();
 const { data, loading, error, success } = useSelector(state => state.product);
@@ -111,7 +111,7 @@ dispatch(resetProductStatus());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { login, logout, clearAuthError } from 'james-redux-cli/slices/authSlice';
+import { login, logout, clearAuthError } from 'redux-api-helper/slices/authSlice';
 
 const dispatch = useDispatch();
 const { user, isAuthenticated, loading, error } = useSelector(state => state.auth);
@@ -140,7 +140,7 @@ import {
   updateRoom,
   deleteRoom,
   resetRoomStatus,
-} from 'james-redux-cli/slices/roomSlice';
+} from 'redux-api-helper/slices/roomSlice';
 
 const dispatch = useDispatch();
 const { data, links, meta, loading, error, success } = useSelector(state => state.room);
@@ -192,7 +192,7 @@ import {
   updateOrder,
   deleteOrder,
   resetOrderStatus,
-} from 'james-redux-cli/slices/orderSlice';
+} from 'redux-api-helper/slices/orderSlice';
 
 const dispatch = useDispatch();
 const { data, links, meta, loading, error, success } = useSelector(state => state.order);
