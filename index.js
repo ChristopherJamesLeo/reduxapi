@@ -85,4 +85,82 @@ program
     }
   });
 
+// ─── make:auth command ───────────────────────────────────────────────────────
+
+const AUTH_TYPES = ['login', 'register', 'logout', 'all'];
+
+const AUTH_TEMPLATE_MAP = {
+  login:    { template: 'loginSlice.js.t',    file: 'loginSlice.js',    key: 'login',    var: 'loginReducer' },
+  register: { template: 'registerSlice.js.t', file: 'registerSlice.js', key: 'register', var: 'registerReducer' },
+  logout:   { template: 'logoutSlice.js.t',   file: 'logoutSlice.js',   key: 'logout',   var: 'logoutReducer' },
+};
+
+async function generateAuthSlice(type, apiUrl) {
+  const { template, file, key, var: reducerVar } = AUTH_TEMPLATE_MAP[type];
+  const templatePath = path.join(__dirname, 'templates', template);
+  const sliceOutputPath = path.join(__dirname, 'slices', file);
+  const reactStoreFile = path.join(process.cwd(), 'src', 'store', 'store.js');
+
+  if (!await fs.pathExists(templatePath)) {
+    throw new Error(`Template not found: ${templatePath}`);
+  }
+
+  let content = await fs.readFile(templatePath, 'utf8');
+  content = content.replace(/{{apiUrl}}/g, apiUrl);
+
+  await fs.outputFile(sliceOutputPath, content);
+  console.log(chalk.green(`✔ Slice generated: slices/${file}`));
+
+  const packageJsonPath = path.join(__dirname, 'package.json');
+  const packageName = (await fs.readJson(packageJsonPath)).name;
+  const importLine = `import ${reducerVar} from '${packageName}/slices/${file}';`;
+
+  let storeContent;
+  if (await fs.pathExists(reactStoreFile)) {
+    storeContent = await fs.readFile(reactStoreFile, 'utf8');
+    if (!storeContent.includes(importLine)) {
+      storeContent = importLine + '\n' + storeContent;
+    }
+    if (storeContent.includes('reducer: {') && !storeContent.includes(`${key}: ${reducerVar}`)) {
+      storeContent = storeContent.replace(
+        /reducer:\s*\{([^}]*)\}/s,
+        (_, inner) => {
+          const lines = inner.trim().split('\n').map(l => '    ' + l.trim()).filter(l => l.trim());
+          const existing = lines.length ? lines.join('\n') + '\n' : '';
+          return `reducer: {\n${existing}    ${key}: ${reducerVar},\n  }`;
+        }
+      );
+    }
+  } else {
+    storeContent = `${importLine}\nimport { configureStore } from '@reduxjs/toolkit';\n\nexport const store = configureStore({\n  reducer: {\n    ${key}: ${reducerVar},\n  },\n});\n`;
+  }
+
+  await fs.outputFile(reactStoreFile, storeContent);
+  console.log(chalk.blue(`✔ Store updated: src/store/store.js`));
+}
+
+program
+  .command('make:auth <type>')
+  .description(`Create auth slice(s). Types: ${AUTH_TYPES.join(', ')}`)
+  .option('-u, --url <url>', 'API base URL', 'https://your-api-url.com')
+  .action(async (type, options) => {
+    const selectedType = type.toLowerCase();
+
+    if (!AUTH_TYPES.includes(selectedType)) {
+      console.error(chalk.red(`Unknown type "${selectedType}". Valid types: ${AUTH_TYPES.join(', ')}`));
+      process.exit(1);
+    }
+
+    try {
+      const types = selectedType === 'all' ? ['login', 'register', 'logout'] : [selectedType];
+      for (const t of types) {
+        await generateAuthSlice(t, options.url);
+      }
+      console.log(chalk.bold.magenta('\n🚀 Done!'));
+    } catch (err) {
+      console.error(chalk.red('Error:'), err.message);
+      process.exit(1);
+    }
+  });
+
 program.parse(process.argv);
