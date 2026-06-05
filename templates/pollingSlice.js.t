@@ -3,8 +3,6 @@ import axios from 'axios';
 
 const API_URL = '{{apiUrl}}/{{lowerName}}';
 
-let pollingTimer = null;
-
 export const fetch{{Name}} = createAsyncThunk(
   '{{lowerName}}/fetch',
   async (_, { rejectWithValue }) => {
@@ -17,15 +15,18 @@ export const fetch{{Name}} = createAsyncThunk(
   }
 );
 
+let _{{lowerName}}PollingTimer = null;
+
 export const startPolling{{Name}} = (intervalMs = 5000) => (dispatch) => {
+  if (_{{lowerName}}PollingTimer) clearInterval(_{{lowerName}}PollingTimer);
   dispatch(fetch{{Name}}());
-  pollingTimer = setInterval(() => dispatch(fetch{{Name}}()), intervalMs);
+  _{{lowerName}}PollingTimer = setInterval(() => dispatch(fetch{{Name}}()), intervalMs);
 };
 
 export const stopPolling{{Name}} = () => () => {
-  if (pollingTimer) {
-    clearInterval(pollingTimer);
-    pollingTimer = null;
+  if (_{{lowerName}}PollingTimer) {
+    clearInterval(_{{lowerName}}PollingTimer);
+    _{{lowerName}}PollingTimer = null;
   }
 };
 

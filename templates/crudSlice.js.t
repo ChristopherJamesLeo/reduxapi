@@ -133,7 +133,7 @@ const {{lowerName}}Slice = createSlice({
       .addCase(delete{{Name}}.fulfilled, (state, action) => {
         state.loading = false;
         state.data = state.data.filter(item => item.id !== action.payload);
-        state.meta.total -= 1;
+        if (state.meta) state.meta.total -= 1;
         state.success = true;
       })
       .addCase(delete{{Name}}.rejected, (state, action) => {

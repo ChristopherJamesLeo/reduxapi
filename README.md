@@ -24,8 +24,14 @@ npm link
 
 ## Usage
 
+After installing locally, use the `reduxapi` binary:
+
 ```bash
+# After npm install (local project)
 npx reduxapi make:api <name> [options]
+
+# One-time use without installing
+npx @james/reduxapi-helper-cli make:api <name> [options]
 ```
 
 ### Options
