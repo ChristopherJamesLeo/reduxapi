@@ -67,6 +67,10 @@ npx @james/reduxapi-helper-cli make:api <name> [options]
 | `batch` | Consolidate concurrent ID-based requests into a single `?ids=1,2,3` API call within a 50 ms window |
 | `dedupe` | Deduplicate in-flight requests — N simultaneous identical calls share one Promise and one API hit |
 | `websocket` | Real-time Redux state via WebSocket or SSE with reconnection, event routing, and HTTP fallback |
+| `stream` | SSE / Fetch streaming — appends server chunks into Redux state token-by-token (ChatGPT-style) |
+| `abort` | AbortController wired into every thunk — cancel in-flight requests on unmount or navigation |
+| `encrypt` | AES-256-GCM encryption via Web Crypto API — sensitive data never touches Redux unencrypted |
+| `heartbeat` | Periodic server ping + Circuit Breaker — auto-blocks requests and shows maintenance UI when server is down |
 
 ## Examples
 
@@ -200,6 +204,30 @@ Sidebar, Header, and Footer all call `dispatch(fetchSettings())` on mount — on
 npx reduxapi make:api Room -t websocket -u https://api.example.com
 ```
 Connects a WebSocket (or SSE) stream. Incoming events (`room.created`, `room.updated`, `room.deleted`) are routed directly into Redux state — no polling, no refresh button needed.
+
+**Data streaming slice:**
+```bash
+npx reduxapi make:api Chat -t stream -u https://api.example.com
+```
+Supports both `EventSource` (SSE GET) and `fetch`-based streaming (POST body). Appends tokens one-by-one into `state.streamText` — ideal for LLM/ChatGPT-style output.
+
+**Abort / cancellation slice:**
+```bash
+npx reduxapi make:api Report -t abort -u https://api.example.com
+```
+Every thunk receives RTK's `signal` and passes it to axios. Call `promise.abort()` in `useEffect` cleanup to cancel in-flight requests on unmount — prevents memory leaks and race conditions.
+
+**Encrypted state slice:**
+```bash
+npx reduxapi make:api Profile -t encrypt -u https://api.example.com
+```
+Fetched data is AES-256-GCM encrypted before entering Redux state. Plaintext lives only in memory after calling `unlockProfile()`. `purgeProfile()` wipes everything including sessionStorage.
+
+**Heartbeat + Circuit Breaker slice:**
+```bash
+npx reduxapi make:api System -t heartbeat -u https://api.example.com
+```
+Pings `GET /health` every 5 s. After 5 consecutive failures the circuit opens — all API calls can check `circuitState === 'open'` to bail early. Auto-probes recovery after 30 s.
 
 ## How It Works
 
@@ -722,6 +750,132 @@ dispatch(connectRoomSSE());   // connects to GET /room/stream
 // { "type": "room.deleted", "data": { "id": 1 } }
 ```
 
+### Data streaming slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetch ChatStream,         // POST + ReadableStream
+  startChatSSEStream,      // GET + EventSource
+  stopChatSSEStream,
+  resetChatStream,
+} from '@james/reduxapi-helper-cli/slices/chatSlice';
+
+const dispatch = useDispatch();
+const { streamText, streaming, done, error } = useSelector(s => s.chat);
+
+// ChatGPT-style: POST with body, stream tokens back
+const promise = dispatch(fetchChatStream({ prompt: 'Hello', model: 'gpt-4' }));
+// Cancel mid-stream (e.g. user clicks "Stop"):
+promise.abort();
+
+// SSE (read-only push from server):
+dispatch(startChatSSEStream({ topic: 'live-scores' }));
+// cleanup:
+dispatch(stopChatSSEStream());
+
+// Reset output (new conversation):
+dispatch(resetChatStream());
+
+// In JSX:
+// <p>{streamText}{streaming && <span className="cursor">▍</span>}</p>
+// <button onClick={() => promise.abort()} disabled={!streaming}>Stop</button>
+```
+
+### Abort / cancellation slice usage
+
+```js
+import { useEffect, useRef } from 'react';
+import { useDispatch } from 'react-redux';
+import { fetchReports, fetchReportById } from '@james/reduxapi-helper-cli/slices/reportSlice';
+
+const dispatch = useDispatch();
+
+// Pattern 1 — auto-cancel on unmount (most common):
+useEffect(() => {
+  const req = dispatch(fetchReports());
+  return () => req.abort(); // cancelled when component leaves screen
+}, []);
+
+// Pattern 2 — cancel previous before new search (search-as-you-type):
+const lastReq = useRef(null);
+const onSearch = (q) => {
+  lastReq.current?.abort();                  // kill previous request
+  lastReq.current = dispatch(fetchReports({ q }));
+};
+
+// Pattern 3 — cancel on tab switch:
+const req = useRef(null);
+req.current = dispatch(fetchReportById(id));
+// on tab change → req.current.abort();
+
+// state.aborted === true  → don't show error (silent cancel)
+// state.error !== null    → only when aborted is false
+```
+
+### Encrypted state slice usage
+
+```js
+// .env
+// REACT_APP_STORE_KEY=my-256bit-secret-key
+
+import { useDispatch, useSelector } from 'react-redux';
+import { loadProfile, unlockProfile, saveProfile, lockProfile, purgeProfile }
+  from '@james/reduxapi-helper-cli/slices/profileSlice';
+
+const dispatch = useDispatch();
+const { data, locked, loading, encryptedData } = useSelector(s => s.profile);
+
+// On mount — fetch from API, encrypt, store ciphertext
+dispatch(loadProfile());
+
+// When user opens sensitive section — decrypt into memory
+dispatch(unlockProfile());
+// data is now available as plaintext in Redux memory
+if (!locked) console.log(data.creditCard);
+
+// Save changes — re-encrypts on success
+dispatch(saveProfile({ id: 1, data: { name: 'James' } }));
+
+// Lock on exit (wipes plaintext from memory, keeps ciphertext)
+dispatch(lockProfile());
+
+// Full wipe on logout (removes sessionStorage too)
+dispatch(purgeProfile());
+```
+
+### Heartbeat + Circuit Breaker slice usage
+
+```js
+// main.jsx — start once after store creation
+import { startHeartbeat } from '@james/reduxapi-helper-cli/slices/systemSlice';
+store.dispatch(startHeartbeat());
+
+// App.jsx — show maintenance UI + schedule recovery probe
+import { useDispatch, useSelector } from 'react-redux';
+import { probeRecovery } from '@james/reduxapi-helper-cli/slices/systemSlice';
+
+const { circuitState, serverStatus, latencyMs, consecutiveFailures } =
+  useSelector(s => s.system);
+
+// Auto-probe recovery 30s after circuit opens
+useEffect(() => {
+  if (circuitState === 'open') {
+    const t = setTimeout(() => dispatch(probeRecovery()), 30_000);
+    return () => clearTimeout(t);
+  }
+}, [circuitState]);
+
+// In other slices — guard API calls:
+// const { circuitState } = getState().system;
+// if (circuitState === 'open') return rejectWithValue('Server unavailable');
+
+// JSX:
+// {circuitState === 'open'      && <Banner>⚠️ Server ခေတ္တ ပြုပြင်နေပါသည်</Banner>}
+// {circuitState === 'half_open' && <Banner>🔄 ပြန်ချိတ်ဆက်နေသည်…</Banner>}
+// {circuitState === 'closed'    && <span>🟢 {latencyMs}ms</span>}
+```
+
 ### Optimistic UI slice usage
 
 ```js
@@ -988,6 +1142,54 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   lastEvent: null,       // most recent raw event — useful for debugging
   loading: false,
   error: null,
+}
+```
+
+**`stream` slice:**
+```js
+{
+  chunks: [],        // raw received chunks (strings or objects)
+  streamText: '',    // concatenated text — bind directly to UI
+  streaming: false,  // true while stream is open
+  done: false,       // true once [DONE] signal received
+  error: null,
+}
+```
+
+**`abort` slice:**
+```js
+{
+  data: [],
+  current: null,
+  loading: false,
+  aborted: false,  // true on intentional cancel — do NOT show error UI
+  error: null,
+  success: false,
+}
+```
+
+**`encrypt` slice:**
+```js
+{
+  encryptedData: null, // AES-256-GCM base64 ciphertext (persisted in sessionStorage)
+  data: null,          // decrypted plaintext — in-memory only, never written to disk
+  locked: true,        // false only after unlockXxx() succeeds
+  loading: false,
+  error: null,
+}
+```
+
+**`heartbeat` slice:**
+```js
+{
+  circuitState: 'closed', // 'closed' | 'open' | 'half_open'
+  consecutiveFailures: 0,
+  consecutiveSuccesses: 0,
+  lastPingAt: null,        // ISO timestamp
+  lastSuccessAt: null,
+  latencyMs: null,         // last successful ping round-trip ms
+  serverStatus: 'unknown', // 'healthy' | 'degraded' | 'down' | 'unknown'
+  pingError: null,
 }
 ```
 

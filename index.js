@@ -27,6 +27,10 @@ const TEMPLATE_MAP = {
   batch:        'batchSlice.js.t',
   dedupe:       'dedupeSlice.js.t',
   websocket:    'websocketSlice.js.t',
+  stream:       'streamSlice.js.t',
+  abort:        'abortSlice.js.t',
+  encrypt:      'encryptSlice.js.t',
+  heartbeat:    'heartbeatSlice.js.t',
 };
 
 program
