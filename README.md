@@ -1,11 +1,11 @@
-# redux-api-helper
+# @james/reduxapi-helper-cli
 
 A CLI tool that generates Redux Toolkit API slices and automatically wires them into your React store.
 
 ## Installation
 
 ```bash
-npm install redux-api-helper
+npm install @james/reduxapi-helper-cli
 ```
 
 ## Requirements
@@ -127,14 +127,14 @@ Updates the list immediately via `optimisticAddTask` / `optimisticUpdateTask` / 
 
 ## How It Works
 
-1. Generates a slice file inside `node_modules/redux-api-helper/slices/`.
+1. Generates a slice file inside `node_modules/@james/reduxapi-helper-cli/slices/`.
 2. Automatically adds the import and reducer entry to `src/store/store.js` in your project (creates the file if it doesn't exist).
 
 ### Example — importing in your React components
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProducts, createProduct, resetProductStatus } from 'redux-api-helper/slices/productSlice';
+import { fetchProducts, createProduct, resetProductStatus } from '@james/reduxapi-helper-cli/slices/productSlice';
 
 const dispatch = useDispatch();
 const { data, loading, error, success } = useSelector(state => state.product);
@@ -153,7 +153,7 @@ dispatch(resetProductStatus());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { login, logout, clearAuthError } from 'redux-api-helper/slices/authSlice';
+import { login, logout, clearAuthError } from '@james/reduxapi-helper-cli/slices/authSlice';
 
 const dispatch = useDispatch();
 const { user, isAuthenticated, loading, error } = useSelector(state => state.auth);
@@ -182,7 +182,7 @@ import {
   updateRoom,
   deleteRoom,
   resetRoomStatus,
-} from 'redux-api-helper/slices/roomSlice';
+} from '@james/reduxapi-helper-cli/slices/roomSlice';
 
 const dispatch = useDispatch();
 const { data, links, meta, loading, error, success } = useSelector(state => state.room);
@@ -234,7 +234,7 @@ import {
   updateOrder,
   deleteOrder,
   resetOrderStatus,
-} from 'redux-api-helper/slices/orderSlice';
+} from '@james/reduxapi-helper-cli/slices/orderSlice';
 
 const dispatch = useDispatch();
 const { data, links, meta, loading, error, success } = useSelector(state => state.order);
@@ -257,7 +257,7 @@ dispatch(resetOrderStatus());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPosts, resetPosts } from 'redux-api-helper/slices/postSlice';
+import { fetchPosts, resetPosts } from '@james/reduxapi-helper-cli/slices/postSlice';
 
 const dispatch = useDispatch();
 const { data, hasMore, nextCursor, loading, loadingMore } = useSelector(state => state.post);
@@ -277,7 +277,7 @@ dispatch(fetchPosts());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { searchProducts, setProductFilters, clearProductFilters } from 'redux-api-helper/slices/productSlice';
+import { searchProducts, setProductFilters, clearProductFilters } from '@james/reduxapi-helper-cli/slices/productSlice';
 
 const dispatch = useDispatch();
 const { data, filters, meta, loading } = useSelector(state => state.product);
@@ -297,7 +297,7 @@ dispatch(clearProductFilters());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { uploadAvatar, updateUploadAvatar, resetAvatarUpload } from 'redux-api-helper/slices/avatarSlice';
+import { uploadAvatar, updateUploadAvatar, resetAvatarUpload } from '@james/reduxapi-helper-cli/slices/avatarSlice';
 
 const dispatch = useDispatch();
 const { data, loading, progress, success, error } = useSelector(state => state.avatar);
@@ -316,7 +316,7 @@ if (success) dispatch(resetAvatarUpload());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { startPollingNotification, stopPollingNotification } from 'redux-api-helper/slices/notificationSlice';
+import { startPollingNotification, stopPollingNotification } from '@james/reduxapi-helper-cli/slices/notificationSlice';
 
 const dispatch = useDispatch();
 const { data, lastUpdated, loading } = useSelector(state => state.notification);
@@ -340,7 +340,7 @@ import {
   fetchReportChart,
   fetchReportMetrics,
   clearReportData,
-} from 'redux-api-helper/slices/reportSlice';
+} from '@james/reduxapi-helper-cli/slices/reportSlice';
 
 const dispatch = useDispatch();
 const { summary, chart, metrics, loadingSummary, loadingChart, loadingMetrics } = useSelector(state => state.report);
@@ -370,7 +370,7 @@ import {
   optimisticAddTask,
   optimisticUpdateTask,
   optimisticRemoveTask,
-} from 'redux-api-helper/slices/taskSlice';
+} from '@james/reduxapi-helper-cli/slices/taskSlice';
 
 const dispatch = useDispatch();
 const { data, loading, error } = useSelector(state => state.task);
