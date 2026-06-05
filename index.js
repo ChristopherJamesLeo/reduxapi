@@ -51,8 +51,9 @@ program
 
     const templatePath = path.join(__dirname, 'templates', templateFileName);
     const sliceFileName = selectedType === 'auth' ? 'authSlice.js' : `${lowerName}Slice.js`;
-    const packageSlicePath = path.join(__dirname, 'slices', sliceFileName);
-    const reactStoreFile = path.join(process.cwd(), 'src', 'store', 'store.js');
+    const storeDir = path.join(process.cwd(), 'src', 'store');
+    const sliceOutputPath = path.join(storeDir, sliceFileName);
+    const reactStoreFile = path.join(storeDir, 'store.js');
 
     try {
       if (!await fs.pathExists(templatePath)) {
@@ -65,15 +66,12 @@ program
         .replace(/{{lowerName}}/g, lowerName)
         .replace(/{{apiUrl}}/g, options.url);
 
-      await fs.outputFile(packageSlicePath, sliceTemplate);
-      console.log(chalk.green(`✔ Slice generated [${selectedType}]: slices/${sliceFileName}`));
-
-      const packageJsonPath = path.join(__dirname, 'package.json');
-      const packageName = (await fs.readJson(packageJsonPath)).name;
+      await fs.outputFile(sliceOutputPath, sliceTemplate);
+      console.log(chalk.green(`✔ Slice generated [${selectedType}]: src/store/${sliceFileName}`));
 
       const reducerKey = selectedType === 'auth' ? 'auth' : lowerName;
       const reducerVar = selectedType === 'auth' ? 'authReducer' : `${lowerName}Reducer`;
-      const importLine = `import ${reducerVar} from '${packageName}/slices/${sliceFileName}';`;
+      const importLine = `import ${reducerVar} from './${sliceFileName}';`;
 
       let storeContent;
       if (await fs.pathExists(reactStoreFile)) {
@@ -118,8 +116,9 @@ const AUTH_TEMPLATE_MAP = {
 async function generateAuthSlice(type, apiUrl) {
   const { template, file, key, var: reducerVar } = AUTH_TEMPLATE_MAP[type];
   const templatePath = path.join(__dirname, 'templates', template);
-  const sliceOutputPath = path.join(__dirname, 'slices', file);
-  const reactStoreFile = path.join(process.cwd(), 'src', 'store', 'store.js');
+  const storeDir = path.join(process.cwd(), 'src', 'store');
+  const sliceOutputPath = path.join(storeDir, file);
+  const reactStoreFile = path.join(storeDir, 'store.js');
 
   if (!await fs.pathExists(templatePath)) {
     throw new Error(`Template not found: ${templatePath}`);
@@ -129,11 +128,9 @@ async function generateAuthSlice(type, apiUrl) {
   content = content.replace(/{{apiUrl}}/g, apiUrl);
 
   await fs.outputFile(sliceOutputPath, content);
-  console.log(chalk.green(`✔ Slice generated: slices/${file}`));
+  console.log(chalk.green(`✔ Slice generated: src/store/${file}`));
 
-  const packageJsonPath = path.join(__dirname, 'package.json');
-  const packageName = (await fs.readJson(packageJsonPath)).name;
-  const importLine = `import ${reducerVar} from '${packageName}/slices/${file}';`;
+  const importLine = `import ${reducerVar} from './${file}';`;
 
   let storeContent;
   if (await fs.pathExists(reactStoreFile)) {

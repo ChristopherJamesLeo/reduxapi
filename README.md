@@ -1,11 +1,11 @@
-# @james/reduxapi-helper-cli
+# @christopherjamesleo/reduxapi-helper
 
 A CLI tool that generates Redux Toolkit API slices and automatically wires them into your React store.
 
 ## Installation
 
 ```bash
-npm install @james/reduxapi-helper-cli
+npm install @christopherjamesleo/reduxapi-helper
 ```
 
 ## Requirements
@@ -31,7 +31,7 @@ After installing locally, use the `reduxapi` binary:
 npx reduxapi make:api <name> [options]
 
 # One-time use without installing
-npx @james/reduxapi-helper-cli make:api <name> [options]
+npx @christopherjamesleo/reduxapi-helper make:api <name> [options]
 ```
 
 ### Options
@@ -231,14 +231,14 @@ Pings `GET /health` every 5 s. After 5 consecutive failures the circuit opens �
 
 ## How It Works
 
-1. Generates a slice file inside `node_modules/@james/reduxapi-helper-cli/slices/`.
+1. Generates a slice file inside `node_modules/@christopherjamesleo/reduxapi-helper/slices/`.
 2. Automatically adds the import and reducer entry to `src/store/store.js` in your project (creates the file if it doesn't exist).
 
 ### Example — importing in your React components
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProducts, createProduct, resetProductStatus } from '@james/reduxapi-helper-cli/slices/productSlice';
+import { fetchProducts, createProduct, resetProductStatus } from '@christopherjamesleo/reduxapi-helper/slices/productSlice';
 
 const dispatch = useDispatch();
 const { data, loading, error, success } = useSelector(state => state.product);
@@ -257,7 +257,7 @@ dispatch(resetProductStatus());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { login, logout, clearAuthError } from '@james/reduxapi-helper-cli/slices/authSlice';
+import { login, logout, clearAuthError } from '@christopherjamesleo/reduxapi-helper/slices/authSlice';
 
 const dispatch = useDispatch();
 const { user, isAuthenticated, loading, error } = useSelector(state => state.auth);
@@ -286,7 +286,7 @@ import {
   updateRoom,
   deleteRoom,
   resetRoomStatus,
-} from '@james/reduxapi-helper-cli/slices/roomSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/roomSlice';
 
 const dispatch = useDispatch();
 const { data, links, meta, loading, error, success } = useSelector(state => state.room);
@@ -338,7 +338,7 @@ import {
   updateOrder,
   deleteOrder,
   resetOrderStatus,
-} from '@james/reduxapi-helper-cli/slices/orderSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/orderSlice';
 
 const dispatch = useDispatch();
 const { data, links, meta, loading, error, success } = useSelector(state => state.order);
@@ -361,7 +361,7 @@ dispatch(resetOrderStatus());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPosts, resetPosts } from '@james/reduxapi-helper-cli/slices/postSlice';
+import { fetchPosts, resetPosts } from '@christopherjamesleo/reduxapi-helper/slices/postSlice';
 
 const dispatch = useDispatch();
 const { data, hasMore, nextCursor, loading, loadingMore } = useSelector(state => state.post);
@@ -381,7 +381,7 @@ dispatch(fetchPosts());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { searchProducts, setProductFilters, clearProductFilters } from '@james/reduxapi-helper-cli/slices/productSlice';
+import { searchProducts, setProductFilters, clearProductFilters } from '@christopherjamesleo/reduxapi-helper/slices/productSlice';
 
 const dispatch = useDispatch();
 const { data, filters, meta, loading } = useSelector(state => state.product);
@@ -401,7 +401,7 @@ dispatch(clearProductFilters());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { uploadAvatar, updateUploadAvatar, resetAvatarUpload } from '@james/reduxapi-helper-cli/slices/avatarSlice';
+import { uploadAvatar, updateUploadAvatar, resetAvatarUpload } from '@christopherjamesleo/reduxapi-helper/slices/avatarSlice';
 
 const dispatch = useDispatch();
 const { data, loading, progress, success, error } = useSelector(state => state.avatar);
@@ -420,7 +420,7 @@ if (success) dispatch(resetAvatarUpload());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { startPollingNotification, stopPollingNotification } from '@james/reduxapi-helper-cli/slices/notificationSlice';
+import { startPollingNotification, stopPollingNotification } from '@christopherjamesleo/reduxapi-helper/slices/notificationSlice';
 
 const dispatch = useDispatch();
 const { data, lastUpdated, loading } = useSelector(state => state.notification);
@@ -444,7 +444,7 @@ import {
   fetchReportChart,
   fetchReportMetrics,
   clearReportData,
-} from '@james/reduxapi-helper-cli/slices/reportSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/reportSlice';
 
 const dispatch = useDispatch();
 const { summary, chart, metrics, loadingSummary, loadingChart, loadingMetrics } = useSelector(state => state.report);
@@ -470,7 +470,7 @@ import {
   fetchRooms,
   revalidateRooms,
   invalidateRoomCache,
-} from '@james/reduxapi-helper-cli/slices/roomSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/roomSlice';
 
 const dispatch = useDispatch();
 const { data, loading, revalidating, lastFetched } = useSelector(s => s.room);
@@ -507,7 +507,7 @@ import {
   throttledHotelSubmit,
   searchHotels,
   clearHotelResults,
-} from '@james/reduxapi-helper-cli/slices/hotelSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/hotelSlice';
 
 const dispatch = useDispatch();
 const { data, loading, submitting, success } = useSelector(s => s.hotel);
@@ -532,7 +532,7 @@ dispatch(clearHotelResults());
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPayments, createPayment } from '@james/reduxapi-helper-cli/slices/paymentSlice';
+import { fetchPayments, createPayment } from '@christopherjamesleo/reduxapi-helper/slices/paymentSlice';
 
 const dispatch = useDispatch();
 const { data, loading, error } = useSelector(s => s.payment);
@@ -556,7 +556,7 @@ import {
   deleteBookmark,
   optimisticAddBookmark,
   createBookmark,
-} from '@james/reduxapi-helper-cli/slices/bookmarkSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/bookmarkSlice';
 
 const dispatch = useDispatch();
 
@@ -584,7 +584,7 @@ npx reduxapi make:api Auth -t tokenrefresh -u https://api.example.com
 **Step 2 — Wire up interceptors in `main.jsx` (once, after store is created):**
 ```jsx
 import { store } from './store/store';
-import { setupApiInterceptors } from '@james/reduxapi-helper-cli/slices/authSlice';
+import { setupApiInterceptors } from '@christopherjamesleo/reduxapi-helper/slices/authSlice';
 
 setupApiInterceptors(store); // ← add this line before ReactDOM.createRoot
 
@@ -595,7 +595,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
 **Step 3 — Use `apiClient` in other slices instead of plain `axios`:**
 ```js
-import { apiClient } from '@james/reduxapi-helper-cli/slices/authSlice';
+import { apiClient } from '@christopherjamesleo/reduxapi-helper/slices/authSlice';
 
 // Token is attached automatically; expired token is silently refreshed
 const response = await apiClient.get('/rooms');
@@ -604,7 +604,7 @@ const response = await apiClient.post('/bookings', data);
 
 **Step 4 — Auth actions in components:**
 ```js
-import { loginAuth, logoutAuth, clearAuthError } from '@james/reduxapi-helper-cli/slices/authSlice';
+import { loginAuth, logoutAuth, clearAuthError } from '@christopherjamesleo/reduxapi-helper/slices/authSlice';
 
 const { user, isAuthenticated, loading, error } = useSelector(s => s.auth);
 
@@ -623,7 +623,7 @@ import {
   updateBooking,
   deleteBooking,
   start BookingNetworkListener,
-} from '@james/reduxapi-helper-cli/slices/bookingSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/bookingSlice';
 
 // main.jsx — start listener once
 store.dispatch(startBookingNetworkListener());
@@ -648,7 +648,7 @@ dispatch(deleteBooking(1));
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchRooms, prefetchRoom, prefetchRoomList, fetchRoomById } from '@james/reduxapi-helper-cli/slices/roomSlice';
+import { fetchRooms, prefetchRoom, prefetchRoomList, fetchRoomById } from '@christopherjamesleo/reduxapi-helper/slices/roomSlice';
 
 const dispatch = useDispatch();
 const { list, current, prefetchCache, loadingById } = useSelector(s => s.room);
@@ -672,7 +672,7 @@ dispatch(fetchRoomById(id));
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { requestUser, fetchUserByIds } from '@james/reduxapi-helper-cli/slices/userSlice';
+import { requestUser, fetchUserByIds } from '@christopherjamesleo/reduxapi-helper/slices/userSlice';
 
 const dispatch = useDispatch();
 const { itemCache } = useSelector(s => s.user);
@@ -696,7 +696,7 @@ dispatch(fetchUserByIds([1, 2, 3]));
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchSettingss } from '@james/reduxapi-helper-cli/slices/settingsSlice';
+import { fetchSettingss } from '@christopherjamesleo/reduxapi-helper/slices/settingsSlice';
 
 // All three components mount at the same time and dispatch the same action
 // ComponentA: dispatch(fetchSettingss());  ─┐
@@ -721,7 +721,7 @@ import {
   sendToRoomSocket,
   connectRoomSSE,       // SSE alternative
   disconnectRoomSSE,
-} from '@james/reduxapi-helper-cli/slices/roomSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/roomSlice';
 
 const dispatch = useDispatch();
 const { data, socketStatus } = useSelector(s => s.room);
@@ -759,7 +759,7 @@ import {
   startChatSSEStream,      // GET + EventSource
   stopChatSSEStream,
   resetChatStream,
-} from '@james/reduxapi-helper-cli/slices/chatSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/chatSlice';
 
 const dispatch = useDispatch();
 const { streamText, streaming, done, error } = useSelector(s => s.chat);
@@ -787,7 +787,7 @@ dispatch(resetChatStream());
 ```js
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { fetchReports, fetchReportById } from '@james/reduxapi-helper-cli/slices/reportSlice';
+import { fetchReports, fetchReportById } from '@christopherjamesleo/reduxapi-helper/slices/reportSlice';
 
 const dispatch = useDispatch();
 
@@ -821,7 +821,7 @@ req.current = dispatch(fetchReportById(id));
 
 import { useDispatch, useSelector } from 'react-redux';
 import { loadProfile, unlockProfile, saveProfile, lockProfile, purgeProfile }
-  from '@james/reduxapi-helper-cli/slices/profileSlice';
+  from '@christopherjamesleo/reduxapi-helper/slices/profileSlice';
 
 const dispatch = useDispatch();
 const { data, locked, loading, encryptedData } = useSelector(s => s.profile);
@@ -848,12 +848,12 @@ dispatch(purgeProfile());
 
 ```js
 // main.jsx — start once after store creation
-import { startHeartbeat } from '@james/reduxapi-helper-cli/slices/systemSlice';
+import { startHeartbeat } from '@christopherjamesleo/reduxapi-helper/slices/systemSlice';
 store.dispatch(startHeartbeat());
 
 // App.jsx — show maintenance UI + schedule recovery probe
 import { useDispatch, useSelector } from 'react-redux';
-import { probeRecovery } from '@james/reduxapi-helper-cli/slices/systemSlice';
+import { probeRecovery } from '@christopherjamesleo/reduxapi-helper/slices/systemSlice';
 
 const { circuitState, serverStatus, latencyMs, consecutiveFailures } =
   useSelector(s => s.system);
@@ -888,7 +888,7 @@ import {
   optimisticAddTask,
   optimisticUpdateTask,
   optimisticRemoveTask,
-} from '@james/reduxapi-helper-cli/slices/taskSlice';
+} from '@christopherjamesleo/reduxapi-helper/slices/taskSlice';
 
 const dispatch = useDispatch();
 const { data, loading, error } = useSelector(state => state.task);
