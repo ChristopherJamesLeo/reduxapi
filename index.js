@@ -22,6 +22,11 @@ const TEMPLATE_MAP = {
   retry:        'retrySlice.js.t',
   rollback:     'rollbackSlice.js.t',
   tokenrefresh: 'tokenRefreshSlice.js.t',
+  offline:      'offlineSlice.js.t',
+  prefetch:     'prefetchSlice.js.t',
+  batch:        'batchSlice.js.t',
+  dedupe:       'dedupeSlice.js.t',
+  websocket:    'websocketSlice.js.t',
 };
 
 program

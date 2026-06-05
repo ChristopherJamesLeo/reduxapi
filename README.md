@@ -62,6 +62,11 @@ npx @james/reduxapi-helper-cli make:api <name> [options]
 | `retry` | Auto-retry on network errors and 5xx failures with exponential back-off (up to 3 attempts) |
 | `rollback` | Snapshot-based optimistic mutations — any failed API call fully restores previous state |
 | `tokenrefresh` | Auto JWT refresh on 401, request queue, and retry — users never see a session-expired error |
+| `offline` | Queue mutations when offline, persist to localStorage, auto-sync when network returns |
+| `prefetch` | Pre-fetch item detail on hover / scroll-near so the detail page opens with zero loading time |
+| `batch` | Consolidate concurrent ID-based requests into a single `?ids=1,2,3` API call within a 50 ms window |
+| `dedupe` | Deduplicate in-flight requests — N simultaneous identical calls share one Promise and one API hit |
+| `websocket` | Real-time Redux state via WebSocket or SSE with reconnection, event routing, and HTTP fallback |
 
 ## Examples
 
@@ -165,6 +170,36 @@ Takes a deep snapshot before every optimistic mutation. On any API failure, stat
 npx reduxapi make:api Auth -t tokenrefresh -u https://api.example.com
 ```
 Generates an `apiClient` (axios instance) + `setupApiInterceptors(store)`. On 401, silently refreshes the token and retries the original request. Concurrent requests are queued and replayed automatically.
+
+**Offline sync slice:**
+```bash
+npx reduxapi make:api Booking -t offline -u https://api.example.com
+```
+Queues all mutations (create/update/delete) to localStorage when offline. Auto-syncs when network returns. Items show `_queued: true` in the UI until confirmed.
+
+**Optimistic pre-fetch slice:**
+```bash
+npx reduxapi make:api Room -t prefetch -u https://api.example.com
+```
+Call `dispatch(prefetchRoom(id))` on `onMouseEnter` or `IntersectionObserver`. When the user actually navigates to the detail page, data is already in cache — 0 ms loading time.
+
+**Batching slice:**
+```bash
+npx reduxapi make:api User -t batch -u https://api.example.com
+```
+Three components each call `dispatch(requestUser(id))` within 50 ms — only one request fires: `GET /user?ids=1,2,3`. Backend must accept a comma-separated `ids` param.
+
+**Deduplication slice:**
+```bash
+npx reduxapi make:api Settings -t dedupe -u https://api.example.com
+```
+Sidebar, Header, and Footer all call `dispatch(fetchSettings())` on mount — only one API call is made. All three components receive the same response once it resolves.
+
+**WebSocket / SSE slice:**
+```bash
+npx reduxapi make:api Room -t websocket -u https://api.example.com
+```
+Connects a WebSocket (or SSE) stream. Incoming events (`room.created`, `room.updated`, `room.deleted`) are routed directly into Redux state — no polling, no refresh button needed.
 
 ## How It Works
 
@@ -549,6 +584,144 @@ dispatch(loginAuth({ email: 'user@example.com', password: 'secret' }));
 dispatch(logoutAuth());
 ```
 
+### Offline sync slice usage
+
+```js
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchBookings,
+  createBooking,
+  updateBooking,
+  deleteBooking,
+  start BookingNetworkListener,
+} from '@james/reduxapi-helper-cli/slices/bookingSlice';
+
+// main.jsx — start listener once
+store.dispatch(startBookingNetworkListener());
+
+// Component
+const { data, queue, isOnline, syncing, syncFailed } = useSelector(s => s.booking);
+
+// Use exactly like a normal slice — offline handling is invisible
+dispatch(createBooking({ room_id: 1, check_in: '2025-01-01' }));
+dispatch(updateBooking({ id: 1, updateData: { status: 'confirmed' } }));
+dispatch(deleteBooking(1));
+
+// UI hints
+// isOnline         → show/hide "Offline Mode 🔴" banner
+// queue.length > 0 → show "3 changes pending sync" badge
+// item._queued     → show "Pending…" status per row
+// syncing          → show sync spinner
+// syncFailed       → show "Some changes failed to sync" alert
+```
+
+### Optimistic pre-fetch slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchRooms, prefetchRoom, prefetchRoomList, fetchRoomById } from '@james/reduxapi-helper-cli/slices/roomSlice';
+
+const dispatch = useDispatch();
+const { list, current, prefetchCache, loadingById } = useSelector(s => s.room);
+
+// Load list — also warms cache from list data
+dispatch(fetchRooms());
+
+// Warm cache on row hover (React)
+<tr onMouseEnter={() => dispatch(prefetchRoom(room.id))}>
+
+// Warm all currently-visible rows at once (Intersection Observer)
+dispatch(prefetchRoomList(visibleIds));
+
+// Navigate to detail — instant if prefetched (0ms), loader if not
+dispatch(fetchRoomById(id));
+
+// loadingById is false when hitting cache → no spinner shown
+```
+
+### Batching slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { requestUser, fetchUserByIds } from '@james/reduxapi-helper-cli/slices/userSlice';
+
+const dispatch = useDispatch();
+const { itemCache } = useSelector(s => s.user);
+
+// In three different components (same render cycle):
+// Component A:  dispatch(requestUser(1));
+// Component B:  dispatch(requestUser(2));
+// Component C:  dispatch(requestUser(3));
+// → Fires ONE request after 50ms: GET /user?ids=1,2,3
+
+// Read item from cache after batch resolves:
+const user = itemCache[id];
+
+// Manual batch (known IDs):
+dispatch(fetchUserByIds([1, 2, 3]));
+
+// Backend must handle: GET /user?ids=1,2,3  →  [{ id:1,… }, { id:2,… }, { id:3,… }]
+```
+
+### Deduplication slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchSettingss } from '@james/reduxapi-helper-cli/slices/settingsSlice';
+
+// All three components mount at the same time and dispatch the same action
+// ComponentA: dispatch(fetchSettingss());  ─┐
+// ComponentB: dispatch(fetchSettingss());  ─┤→  ONE axios.get('/settings')
+// ComponentC: dispatch(fetchSettingss());  ─┘   all three components re-render once
+
+// Per-ID dedup
+import { fetchSettingsById } from '…';
+dispatch(fetchSettingsById(5)); // Component 1
+dispatch(fetchSettingsById(5)); // Component 2 — waits on same Promise, no second API call
+```
+
+### WebSocket / SSE slice usage
+
+```js
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchRooms,
+  connectRoomSocket,
+  disconnectRoomSocket,
+  sendToRoomSocket,
+  connectRoomSSE,       // SSE alternative
+  disconnectRoomSSE,
+} from '@james/reduxapi-helper-cli/slices/roomSlice';
+
+const dispatch = useDispatch();
+const { data, socketStatus } = useSelector(s => s.room);
+
+useEffect(() => {
+  dispatch(fetchRooms());         // HTTP: load current list
+  dispatch(connectRoomSocket());  // WS:   receive real-time updates
+
+  return () => dispatch(disconnectRoomSocket()); // cleanup on unmount
+}, []);
+
+// Send message to server (subscribe to a channel)
+dispatch(sendToRoomSocket({ type: 'subscribe', channel: 'room_updates' }));
+
+// UI hints
+// socketStatus === 'connected'    → show 🟢 Live indicator
+// socketStatus === 'disconnected' → show 🔴 Reconnecting…
+// socketStatus === 'error'        → show ⚠️ Connection error
+
+// SSE (simpler, read-only — no sendToSocket needed):
+dispatch(connectRoomSSE());   // connects to GET /room/stream
+
+// Backend event format:
+// { "type": "room.created", "data": { ...room } }
+// { "type": "room.updated", "data": { ...room } }
+// { "type": "room.deleted", "data": { "id": 1 } }
+```
+
 ### Optimistic UI slice usage
 
 ```js
@@ -754,6 +927,65 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
+  loading: false,
+  error: null,
+}
+```
+
+**`offline` slice:**
+```js
+{
+  data: [],
+  queue: [],         // [{ queueId, method, data?, resourceId?, timestamp }]
+  isOnline: true,    // mirrors navigator.onLine
+  syncing: false,    // true while queue is being flushed
+  syncFailed: [],    // items that failed even after reconnect
+  loading: false,
+  error: null,
+  success: false,
+}
+```
+
+**`prefetch` slice:**
+```js
+{
+  list: [],
+  current: null,       // currently displayed item
+  prefetchCache: {},   // { [id]: item } — warmed by hover / scroll
+  loading: false,
+  loadingById: false,  // true ONLY on cache miss
+  error: null,
+}
+```
+
+**`batch` slice:**
+```js
+{
+  list: [],
+  itemCache: {},       // { [id]: item } — populated by every batch/list fetch
+  loading: false,
+  batchLoading: false, // true while a batched request is in-flight
+  error: null,
+}
+```
+
+**`dedupe` slice:**
+```js
+{
+  list: [],
+  items: {},     // { [id]: item } — single-item results indexed by id
+  loading: false,
+  error: null,
+}
+```
+
+**`websocket` slice:**
+```js
+{
+  data: [],
+  socketStatus: 'idle', // 'idle' | 'connected' | 'disconnected' | 'error'
+  socketError: null,
+  lastEvent: null,       // most recent raw event — useful for debugging
   loading: false,
   error: null,
 }
