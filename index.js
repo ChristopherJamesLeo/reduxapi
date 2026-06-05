@@ -17,6 +17,11 @@ const TEMPLATE_MAP = {
   polling:      'pollingSlice.js.t',
   analytics:    'analyticsSlice.js.t',
   optimistic:   'optimisticSlice.js.t',
+  cache:        'cacheSlice.js.t',
+  debounce:     'debounceSlice.js.t',
+  retry:        'retrySlice.js.t',
+  rollback:     'rollbackSlice.js.t',
+  tokenrefresh: 'tokenRefreshSlice.js.t',
 };
 
 program

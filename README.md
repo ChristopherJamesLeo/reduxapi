@@ -57,6 +57,11 @@ npx @james/reduxapi-helper-cli make:api <name> [options]
 | `polling` | Automatic background re-fetching at a set interval for real-time feel |
 | `analytics` | Read-only slice structured for dashboard summary cards, charts, and metric lists |
 | `optimistic` | Instant UI update before the API responds, with automatic rollback on failure |
+| `cache` | Stale-While-Revalidate caching — shows cached data instantly, refreshes silently in background |
+| `debounce` | Built-in debounce (search inputs) and throttle (submit buttons) to prevent API spam |
+| `retry` | Auto-retry on network errors and 5xx failures with exponential back-off (up to 3 attempts) |
+| `rollback` | Snapshot-based optimistic mutations — any failed API call fully restores previous state |
+| `tokenrefresh` | Auto JWT refresh on 401, request queue, and retry — users never see a session-expired error |
 
 ## Examples
 
@@ -130,6 +135,36 @@ Three separate thunks — `fetchReportSummary`, `fetchReportChart`, `fetchReport
 npx reduxapi make:api Task -t optimistic -u https://api.example.com
 ```
 Updates the list immediately via `optimisticAddTask` / `optimisticUpdateTask` / `optimisticRemoveTask`, then confirms or rolls back when the API responds.
+
+**Cache + Stale-While-Revalidate slice:**
+```bash
+npx reduxapi make:api Room -t cache -u https://api.example.com
+```
+Returns Redux-cached data instantly, then silently re-fetches in background. Shows stale data while fresh data loads — zero perceived latency.
+
+**Debounce / Throttle slice:**
+```bash
+npx reduxapi make:api Hotel -t debounce -u https://api.example.com
+```
+Built-in `debouncedHotelSearch(dispatch, params)` (500 ms) and `throttledHotelSubmit(dispatch, data)` (2 s) helpers — no extra libraries needed.
+
+**Auto-retry slice:**
+```bash
+npx reduxapi make:api Payment -t retry -u https://api.example.com
+```
+Every thunk silently retries up to 3 times (2 s → 4 s → 6 s) on network errors or 5xx. Only surfaces the error to the UI after all retries are exhausted.
+
+**Snapshot rollback slice:**
+```bash
+npx reduxapi make:api Bookmark -t rollback -u https://api.example.com
+```
+Takes a deep snapshot before every optimistic mutation. On any API failure, state is fully restored to exactly what it was — no manual undo logic needed.
+
+**Auto token-refresh slice:**
+```bash
+npx reduxapi make:api Auth -t tokenrefresh -u https://api.example.com
+```
+Generates an `apiClient` (axios instance) + `setupApiInterceptors(store)`. On 401, silently refreshes the token and retries the original request. Concurrent requests are queued and replayed automatically.
 
 ## How It Works
 
@@ -364,6 +399,156 @@ dispatch(fetchReportMetrics({ group: 'region' }));
 dispatch(clearReportData());
 ```
 
+### Cache + Stale-While-Revalidate slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchRooms,
+  revalidateRooms,
+  invalidateRoomCache,
+} from '@james/reduxapi-helper-cli/slices/roomSlice';
+
+const dispatch = useDispatch();
+const { data, loading, revalidating, lastFetched } = useSelector(s => s.room);
+
+// First visit: hits API, caches result for 5 minutes
+dispatch(fetchRooms());
+
+// Second visit within 5 min: returns Redux cache instantly, no API call
+dispatch(fetchRooms());
+
+// Custom TTL (10 min)
+dispatch(fetchRooms({ ttl: 10 * 60 * 1000 }));
+
+// Force a fresh fetch regardless of TTL
+dispatch(fetchRooms({ force: true }));
+
+// Silent background refresh (stale data still visible to user)
+dispatch(revalidateRooms());
+
+// Expire the cache (next fetch will always hit the API)
+dispatch(invalidateRoomCache());
+
+// UI hints
+// loading      → show full-page spinner (first load only)
+// revalidating → show a subtle "Refreshing…" badge (stale data still shown)
+```
+
+### Debounce / Throttle slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  debouncedHotelSearch,
+  throttledHotelSubmit,
+  searchHotels,
+  clearHotelResults,
+} from '@james/reduxapi-helper-cli/slices/hotelSlice';
+
+const dispatch = useDispatch();
+const { data, loading, submitting, success } = useSelector(s => s.hotel);
+
+// Debounced — fires 500 ms after the user stops typing
+<input onChange={(e) => debouncedHotelSearch(dispatch, { q: e.target.value })} />
+
+// Throttled — one API call per 2 seconds even if button is clicked 10 times
+<button onClick={() => throttledHotelSubmit(dispatch, formData)}>Book Now</button>
+
+// Direct call (no debounce)
+dispatch(searchHotels({ city: 'Dubai', stars: 5 }));
+
+// Clear results
+dispatch(clearHotelResults());
+
+// state.loading    → search spinner
+// state.submitting → disable button while submit is in-flight
+```
+
+### Auto-retry slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchPayments, createPayment } from '@james/reduxapi-helper-cli/slices/paymentSlice';
+
+const dispatch = useDispatch();
+const { data, loading, error } = useSelector(s => s.payment);
+
+// Each call auto-retries up to 3 times on network errors or 5xx
+dispatch(fetchPayments());
+dispatch(createPayment({ amount: 500, currency: 'AED' }));
+
+// error is only set after ALL retry attempts fail
+// 4xx errors (400, 401, 422…) are NOT retried — they surface immediately
+```
+
+### Snapshot rollback slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  optimisticUpdateBookmark,
+  updateBookmark,
+  optimisticRemoveBookmark,
+  deleteBookmark,
+  optimisticAddBookmark,
+  createBookmark,
+} from '@james/reduxapi-helper-cli/slices/bookmarkSlice';
+
+const dispatch = useDispatch();
+
+// Toggle bookmark (optimistic) — auto-reverts if API returns 401/500
+dispatch(optimisticUpdateBookmark({ id: 1, saved: true }));
+dispatch(updateBookmark({ id: 1, updateData: { saved: true } }));
+
+// Delete (optimistic) — item reappears if API fails
+dispatch(optimisticRemoveBookmark(id));
+dispatch(deleteBookmark(id));
+
+// Create (optimistic) — temp item removed if API fails
+const tempId = Date.now();
+dispatch(optimisticAddBookmark({ _tempId: tempId, title: 'My Hotel' }));
+dispatch(createBookmark({ _tempId: tempId, title: 'My Hotel' }));
+```
+
+### Auto token-refresh slice usage
+
+**Step 1 — Generate the slice:**
+```bash
+npx reduxapi make:api Auth -t tokenrefresh -u https://api.example.com
+```
+
+**Step 2 — Wire up interceptors in `main.jsx` (once, after store is created):**
+```jsx
+import { store } from './store/store';
+import { setupApiInterceptors } from '@james/reduxapi-helper-cli/slices/authSlice';
+
+setupApiInterceptors(store); // ← add this line before ReactDOM.createRoot
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <Provider store={store}><App /></Provider>
+);
+```
+
+**Step 3 — Use `apiClient` in other slices instead of plain `axios`:**
+```js
+import { apiClient } from '@james/reduxapi-helper-cli/slices/authSlice';
+
+// Token is attached automatically; expired token is silently refreshed
+const response = await apiClient.get('/rooms');
+const response = await apiClient.post('/bookings', data);
+```
+
+**Step 4 — Auth actions in components:**
+```js
+import { loginAuth, logoutAuth, clearAuthError } from '@james/reduxapi-helper-cli/slices/authSlice';
+
+const { user, isAuthenticated, loading, error } = useSelector(s => s.auth);
+
+dispatch(loginAuth({ email: 'user@example.com', password: 'secret' }));
+dispatch(logoutAuth());
+```
+
 ### Optimistic UI slice usage
 
 ```js
@@ -515,6 +700,62 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   loading: false,
   error: null,    // set if API call fails after optimistic update
   success: false,
+}
+```
+
+**`cache` slice:**
+```js
+{
+  data: [],            // cached items
+  lastFetched: null,   // Unix ms timestamp of last successful API call
+  loading: false,      // true only on first load (empty cache)
+  revalidating: false, // true during silent background refresh
+  error: null,
+}
+```
+
+**`debounce` slice:**
+```js
+{
+  data: [],         // search results
+  result: null,     // last submit response
+  loading: false,   // search in-flight
+  submitting: false,// form submit in-flight
+  error: null,
+  success: false,
+}
+```
+
+**`retry` slice:**
+```js
+{
+  data: [],
+  loading: false,
+  error: null,     // only set after all retry attempts are exhausted
+  success: false,
+}
+```
+
+**`rollback` slice:**
+```js
+{
+  data: [],          // current list (may contain _optimistic: true items)
+  _snapshot: null,   // deep copy saved before each mutation; null when clean
+  loading: false,
+  error: null,
+  success: false,
+}
+```
+
+**`tokenrefresh` slice:**
+```js
+{
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+  isAuthenticated: false,
+  loading: false,
+  error: null,
 }
 ```
 
