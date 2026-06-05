@@ -45,6 +45,12 @@ npx reduxapi make:api <name> [options]
 | `auth` | Login, register, logout with localStorage |
 | `customheader` | Full CRUD with custom headers (Bearer token + any extra headers) |
 | `secretkey` | Full CRUD with two-step auth — fetches a secret key first, then uses it as a custom header |
+| `infinite` | Fetch with cursor-based load-more / append support for infinite scrolling |
+| `search` | Read-only fetch optimized for complex queries and dynamic filter combinations |
+| `upload` | Create / Update with automatic `FormData` conversion for files and media |
+| `polling` | Automatic background re-fetching at a set interval for real-time feel |
+| `analytics` | Read-only slice structured for dashboard summary cards, charts, and metric lists |
+| `optimistic` | Instant UI update before the API responds, with automatic rollback on failure |
 
 ## Examples
 
@@ -82,6 +88,42 @@ Generates a slice with a `getHeaders()` helper function. Edit it to add any head
 npx reduxapi make:api Room -t secretkey -u https://api.yourhotel.com/v1
 ```
 Every request automatically fetches a fresh secret key from `GET /get-secret-key` first, then sends the real request with `X-Custom-Secret-Key` in the header.
+
+**Infinite scroll slice:**
+```bash
+npx reduxapi make:api Post -t infinite -u https://api.example.com
+```
+Appends pages to `state.data` on each load-more call. Tracks `hasMore` and `nextCursor` automatically.
+
+**Search / filter slice:**
+```bash
+npx reduxapi make:api Product -t search -u https://api.example.com
+```
+Passes any filter object as query params. Includes `setFilters` and `clearFilters` reducers.
+
+**File upload slice:**
+```bash
+npx reduxapi make:api Avatar -t upload -u https://api.example.com
+```
+Accepts plain objects containing `File` values and converts them to `FormData` automatically.
+
+**Polling slice:**
+```bash
+npx reduxapi make:api Notification -t polling -u https://api.example.com
+```
+Provides `startPollingNotification(5000)` and `stopPollingNotification()` thunk helpers.
+
+**Analytics / dashboard slice:**
+```bash
+npx reduxapi make:api Report -t analytics -u https://api.example.com
+```
+Three separate thunks — `fetchReportSummary`, `fetchReportChart`, `fetchReportMetrics` — each with its own loading flag.
+
+**Optimistic UI slice:**
+```bash
+npx reduxapi make:api Task -t optimistic -u https://api.example.com
+```
+Updates the list immediately via `optimisticAddTask` / `optimisticUpdateTask` / `optimisticRemoveTask`, then confirms or rolls back when the API responds.
 
 ## How It Works
 
@@ -211,6 +253,143 @@ dispatch(deleteOrder(1));
 dispatch(resetOrderStatus());
 ```
 
+### Infinite scroll slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchPosts, resetPosts } from 'redux-api-helper/slices/postSlice';
+
+const dispatch = useDispatch();
+const { data, hasMore, nextCursor, loading, loadingMore } = useSelector(state => state.post);
+
+// Initial load
+dispatch(fetchPosts());
+
+// Load next page
+if (hasMore) dispatch(fetchPosts({ cursor: nextCursor }));
+
+// Reset and reload (e.g. on pull-to-refresh)
+dispatch(resetPosts());
+dispatch(fetchPosts());
+```
+
+### Search / filter slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { searchProducts, setProductFilters, clearProductFilters } from 'redux-api-helper/slices/productSlice';
+
+const dispatch = useDispatch();
+const { data, filters, meta, loading } = useSelector(state => state.product);
+
+// Search with params
+dispatch(searchProducts({ q: 'laptop', category: 'electronics', page: 1 }));
+
+// Save active filters to state, then search
+dispatch(setProductFilters({ status: 'active' }));
+dispatch(searchProducts(filters));
+
+// Clear everything
+dispatch(clearProductFilters());
+```
+
+### File upload slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { uploadAvatar, updateUploadAvatar, resetAvatarUpload } from 'redux-api-helper/slices/avatarSlice';
+
+const dispatch = useDispatch();
+const { data, loading, progress, success, error } = useSelector(state => state.avatar);
+
+// Create — mix of plain fields and File objects
+dispatch(uploadAvatar({ title: 'Profile Photo', file: event.target.files[0] }));
+
+// Update (uses POST + _method: PUT for Laravel compatibility)
+dispatch(updateUploadAvatar({ id: 1, data: { title: 'New Photo', file: newFile } }));
+
+// Reset after success
+if (success) dispatch(resetAvatarUpload());
+```
+
+### Polling slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import { startPollingNotification, stopPollingNotification } from 'redux-api-helper/slices/notificationSlice';
+
+const dispatch = useDispatch();
+const { data, lastUpdated, loading } = useSelector(state => state.notification);
+
+// Start polling every 5 seconds
+dispatch(startPollingNotification(5000));
+
+// Stop when component unmounts
+useEffect(() => {
+  dispatch(startPollingNotification(10000));
+  return () => dispatch(stopPollingNotification());
+}, []);
+```
+
+### Analytics / dashboard slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchReportSummary,
+  fetchReportChart,
+  fetchReportMetrics,
+  clearReportData,
+} from 'redux-api-helper/slices/reportSlice';
+
+const dispatch = useDispatch();
+const { summary, chart, metrics, loadingSummary, loadingChart, loadingMetrics } = useSelector(state => state.report);
+
+// KPI cards
+dispatch(fetchReportSummary({ period: 'month' }));
+
+// Line / bar chart data
+dispatch(fetchReportChart({ metric: 'revenue', range: '30d', interval: 'day' }));
+
+// Metric breakdown table
+dispatch(fetchReportMetrics({ group: 'region' }));
+
+// Clear dashboard on unmount
+dispatch(clearReportData());
+```
+
+### Optimistic UI slice usage
+
+```js
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  optimisticAddTask,
+  optimisticUpdateTask,
+  optimisticRemoveTask,
+} from 'redux-api-helper/slices/taskSlice';
+
+const dispatch = useDispatch();
+const { data, loading, error } = useSelector(state => state.task);
+
+// Optimistic create
+const tempId = Date.now();
+dispatch(optimisticAddTask({ _tempId: tempId, title: 'Buy milk', done: false }));
+dispatch(createTask({ _tempId: tempId, title: 'Buy milk', done: false }));
+
+// Optimistic update
+dispatch(optimisticUpdateTask({ id: 1, title: 'Buy oat milk', done: true }));
+dispatch(updateTask({ id: 1, updateData: { title: 'Buy oat milk', done: true } }));
+
+// Optimistic delete
+dispatch(optimisticRemoveTask(1));
+dispatch(deleteTask(1));
+// → UI removes item instantly; if API fails, error is set and item stays removed (re-fetch to restore)
+```
+
 ## Store Setup
 
 The CLI writes imports and reducers into `src/store/store.js` automatically. To connect the store to your app:
@@ -262,6 +441,74 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   isAuthenticated: false,
   loading: false,
   error: null,
+}
+```
+
+**`infinite` slice:**
+```js
+{
+  data: [],          // accumulated items across all pages
+  nextCursor: null,  // cursor for the next page (null = first page)
+  hasMore: true,     // false when all pages are fetched
+  loading: false,    // true only on the initial load
+  loadingMore: false,// true when appending the next page
+  error: null,
+}
+```
+
+**`search` slice:**
+```js
+{
+  data: [],     // search results
+  meta: null,   // pagination meta if returned by API
+  filters: {},  // active filters saved via setFilters
+  loading: false,
+  error: null,
+}
+```
+
+**`upload` slice:**
+```js
+{
+  data: null,      // response from the API after upload
+  progress: 0,     // 0 → 100 (set to 100 on success)
+  loading: false,
+  error: null,
+  success: false,
+}
+```
+
+**`polling` slice:**
+```js
+{
+  data: null,          // latest fetched data
+  isPolling: false,
+  lastUpdated: null,   // ISO timestamp of the last successful fetch
+  loading: false,
+  error: null,
+}
+```
+
+**`analytics` slice:**
+```js
+{
+  summary: null,        // KPI / card data
+  chart: [],            // time-series or grouped chart data
+  metrics: [],          // metric breakdown rows
+  loadingSummary: false,
+  loadingChart: false,
+  loadingMetrics: false,
+  error: null,
+}
+```
+
+**`optimistic` slice:**
+```js
+{
+  data: [],       // list with optimistic items (_optimistic: true until confirmed)
+  loading: false,
+  error: null,    // set if API call fails after optimistic update
+  success: false,
 }
 ```
 

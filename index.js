@@ -11,6 +11,12 @@ const TEMPLATE_MAP = {
   auth:         'authSlice.js.t',
   customheader: 'customHeaderSlice.js.t',
   secretkey:    'secretKeySlice.js.t',
+  infinite:     'infiniteSlice.js.t',
+  search:       'searchSlice.js.t',
+  upload:       'uploadSlice.js.t',
+  polling:      'pollingSlice.js.t',
+  analytics:    'analyticsSlice.js.t',
+  optimistic:   'optimisticSlice.js.t',
 };
 
 program
