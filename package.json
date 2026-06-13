@@ -17,18 +17,18 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "axios": "^1.13.2",
+    "axios": "^1.17.0",
     "chalk": "^4.1.2",
-    "commander": "^14.0.2",
-    "fs-extra": "^11.3.3"
+    "commander": "^15.0.0",
+    "fs-extra": "^11.3.5"
   },
   "peerDependencies": {
-    "@reduxjs/toolkit": "^2.11.2",
-    "react": "^17.0.0 || ^18.0.0 || ^19.0.0",
-    "react-redux": "^9.2.0"
+    "@reduxjs/toolkit": "^2.12.0",
+    "react": "^19.2.7",
+    "react-redux": "^9.3.0"
   },
   "devDependencies": {
-    "react": "^19.2.6"
+    "react": "19.2.7"
   },
   "repository": {
     "type": "git",
