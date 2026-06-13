@@ -30,7 +30,12 @@ const TEMPLATE_MAP = {
   stream:       'streamSlice.js.t',
   abort:        'abortSlice.js.t',
   encrypt:      'encryptSlice.js.t',
-  heartbeat:    'heartbeatSlice.js.t',
+  heartbeat:           'heartbeatSlice.js.t',
+  focusrevalidation:   'focusRevalidationSlice.js.t',
+  circuitbreaker:      'circuitBreakerSlice.js.t',
+  gracefuldegradation: 'gracefulDegradationSlice.js.t',
+  sessionidle:         'sessionIdleSlice.js.t',
+  mfa:                 'mfaSlice.js.t',
 };
 
 program

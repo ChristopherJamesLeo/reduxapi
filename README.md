@@ -71,6 +71,11 @@ npx @christopherjamesleo/reduxapi-helper make:api <name> [options]
 | `abort` | AbortController wired into every thunk — cancel in-flight requests on unmount or navigation |
 | `encrypt` | AES-256-GCM encryption via Web Crypto API — sensitive data never touches Redux unencrypted |
 | `heartbeat` | Periodic server ping + Circuit Breaker — auto-blocks requests and shows maintenance UI when server is down |
+| `focusrevalidation` | Stale-On-Focus — silently refetches stale data whenever the user returns to the tab or unlocks their phone screen |
+| `circuitbreaker` | Advanced Circuit Breaker — trips after consecutive API failures, blocks all requests, shows maintenance UI, auto-probes recovery |
+| `gracefuldegradation` | Graceful Degradation — falls back to localStorage cache when the server is down; app stays usable in read-only mode |
+| `sessionidle` | Session Idle Timeout — auto-logout after 5 min of inactivity, 60-second countdown warning, clears all sensitive state |
+| `mfa` | Multi-Factor Authentication — 2-step login (password → OTP), TOTP/SMS/email support, 60s countdown, lockout after 3 wrong attempts, QR setup flow |
 
 ## Examples
 
@@ -228,6 +233,36 @@ Fetched data is AES-256-GCM encrypted before entering Redux state. Plaintext liv
 npx reduxapi make:api System -t heartbeat -u https://api.example.com
 ```
 Pings `GET /health` every 5 s. After 5 consecutive failures the circuit opens — all API calls can check `circuitState === 'open'` to bail early. Auto-probes recovery after 30 s.
+
+**Focus Revalidation slice:**
+```bash
+npx reduxapi make:api Post -t focusrevalidation -u https://api.example.com
+```
+Tab ပြောင်းပြီး ပြန်လာတိုင်း သို့မဟုတ် ဖုန်း Screen ပြန်ဖွင့်တိုင်း Stale Data ကို Background မှ Silent Refetch လုပ်ပေးသည်။ `revalidating` state ဖြင့် Subtle Spinner ပြသနိုင်သည်။
+
+**Advanced Circuit Breaker slice:**
+```bash
+npx reduxapi make:api Order -t circuitbreaker -u https://api.example.com
+```
+Heartbeat နှင့် တူသော်လည်း Real API calls မှ Failure တွေကိုပါ ပေါင်းတွက်သည်။ `blockedCount` ဖြင့် ပိတ်ဆို့ထားသော Request အရေအတွက် ကို ခြေရာခံနိုင်သည်။
+
+**Graceful Degradation slice:**
+```bash
+npx reduxapi make:api Product -t gracefuldegradation -u https://api.example.com
+```
+Server ချိတ်ဆက်မရသည့်အခါ localStorage Cache ဖြင့် App ကို ဆက်ပြသသည်။ Write operations တွေကို Offline Mode ထဲ၌ ပိတ်ဆို့ပေးသည်။ Network ပြန်ရောက်သည့်အခါ Auto-refresh ပြုလုပ်သည်။
+
+**Session Idle Timeout slice:**
+```bash
+npx reduxapi make:api Session -t sessionidle -u https://api.example.com
+```
+User ၅ မိနစ် ငြိမ်နေရင် Logout မတိုင်မီ ၆၀ စက္ကန့်ကြိုတင် Warning Modal ပြပြီး Auto-logout ချပေးသည်။ Session Token နှင့် sensitive data တွေကို Clear လုပ်ပေးသည်။
+
+**MFA (Multi-Factor Authentication) slice:**
+```bash
+npx reduxapi make:api Mfa -t mfa -u https://api.example.com
+```
+Password login ပြီးရင် OTP screen ကို ဆက်ပြသည်။ TOTP (Google Authenticator), SMS, Email OTP တို့ကို support လုပ်သည်။ 60s countdown timer, ၃ ကြိမ် မမှန်သည့်အခါ ၅ မိနစ် Lockout, QR code setup flow တို့ ပါဝင်သည်။
 
 ## How It Works
 
@@ -876,6 +911,178 @@ useEffect(() => {
 // {circuitState === 'closed'    && <span>🟢 {latencyMs}ms</span>}
 ```
 
+### Focus Revalidation (Stale-On-Focus) slice usage
+
+```bash
+npx reduxapi make:api Post -t focusrevalidation -u https://api.example.com
+```
+
+Tab ပြောင်းပြီး ပြန်လာတိုင်း သို့မဟုတ် ဖုန်း Screen ပြန်ဖွင့်တိုင်း Data ကို Background မှ Silent Refetch လုပ်ပေးသည်။
+
+```js
+// main.jsx — register listeners once
+import { start{{Name}}FocusRevalidation } from '…/postSlice';
+store.dispatch(startPostFocusRevalidation());
+
+// Component
+const { data, loading, revalidating, lastFetchedAt } = useSelector(s => s.post);
+useEffect(() => { dispatch(fetchPosts()); }, []);
+
+// revalidating = true → show small corner spinner (not full-page loader)
+// {revalidating && <SmallSpinner />}
+// {`Last updated: ${new Date(lastFetchedAt).toLocaleTimeString()}`}
+```
+
+### Circuit Breaker slice usage
+
+```bash
+npx reduxapi make:api Order -t circuitbreaker -u https://api.example.com
+```
+
+API ၅ ကြိမ် ဆက်တိုက် Error ဖြစ်လျှင် Circuit ကို Trip လုပ်ကာ Request များ ပိတ်ဆို့သည်။ ၃၀ စက္ကန့်အကြာ Auto-probe ဖြင့် Recovery စစ်ဆေးသည်။
+
+```js
+// main.jsx
+import { startOrderCircuitBreaker } from '…/orderSlice';
+store.dispatch(startOrderCircuitBreaker());
+
+// App.jsx — schedule recovery probe when circuit opens
+const { circuitState, serverStatus, latencyMs, blockedCount } = useSelector(s => s.order);
+useEffect(() => {
+  if (circuitState === 'open') dispatch(scheduleOrderRecovery());
+}, [circuitState]);
+
+// JSX:
+// {circuitState === 'open'      && <Banner>⚠️ Server ခေတ္တ ပြင်ဆင်နေပါသည်</Banner>}
+// {circuitState === 'half_open' && <Banner>🔄 ပြန်ချိတ်ဆက်နေသည်…</Banner>}
+// {circuitState === 'closed'    && <span>🟢 {latencyMs}ms</span>}
+// {serverStatus === 'degraded'  && <Badge>⚡ Server နှေးနေသည်</Badge>}
+// {`Blocked requests: ${blockedCount}`}
+```
+
+### Graceful Degradation (Offline/Fail Fallback) slice usage
+
+```bash
+npx reduxapi make:api Product -t gracefuldegradation -u https://api.example.com
+```
+
+Server ချိတ်ဆက်မရလျှင် localStorage မှ Cache Data ဖြင့် App ကို ဆက်ပြသသည်။ Network ပြန်ရောက်သည့်အခါ Auto-refresh ပြုလုပ်သည်။
+
+```js
+// main.jsx
+import { startProductDegradationListener } from '…/productSlice';
+store.dispatch(startProductDegradationListener());
+
+// Component
+const { data, loading, degraded, fromCache, cachedAt, cacheAvailable, error } =
+  useSelector(s => s.product);
+
+// Show degradation banners:
+// {degraded && fromCache && (
+//   <Banner>📦 Offline — {new Date(cachedAt).toLocaleString()} မှ Cache Data</Banner>
+// )}
+// {degraded && !cacheAvailable && (
+//   <ErrorPage>⚠️ Server မရ၊ Cache Data လည်း မရှိပါ</ErrorPage>
+// )}
+// Disable writes in degraded mode:
+// <button disabled={degraded}>Create</button>
+```
+
+### Session Idle Timeout slice usage
+
+```bash
+npx reduxapi make:api Session -t sessionidle -u https://api.example.com
+```
+
+User ၅ မိနစ် ငြိမ်နေရင် Auto Logout ချပေးသည်။ Logout မတိုင်မီ ၁ မိနစ်ကြိုတင် Warning Modal ပြသည်။
+
+```js
+// After successful login:
+import { setSessionSessionActive, startSessionIdleWatcher } from '…/sessionSlice';
+dispatch(setSessionSessionActive(true));
+store.dispatch(startSessionIdleWatcher());
+
+// On manual logout:
+dispatch(stopSessionIdleWatcher());
+dispatch(logoutSession());
+
+// Component — show warning countdown
+const { showingWarning, loggedOutReason } = useSelector(s => s.session);
+
+// {showingWarning && (
+//   <Modal>
+//     <p>⏳ ၁ မိနစ်အတွင်း Auto Logout ဖြစ်မည်</p>
+//     <button onClick={() => dispatch(resetSessionIdleTimer())}>ဆက်သုံးမည်</button>
+//     <button onClick={() => dispatch(logoutSession())}>ထွက်မည်</button>
+//   </Modal>
+// )}
+// {loggedOutReason === 'idle' && (
+//   <Alert>မသက်ဆိုင်မှုကြောင့် အလိုအလျောက် Log Out ဖြစ်သွားပါသည်</Alert>
+// )}
+```
+
+### MFA (Multi-Factor Authentication) slice usage
+
+```bash
+npx reduxapi make:api Mfa -t mfa -u https://api.example.com
+```
+
+2-step login: Password → OTP verification။ TOTP (Google Authenticator), SMS, Email OTP support။ 60s countdown timer, ၃ ကြိမ် မမှန်သည့်အခါ ၅ မိနစ် lockout, QR code setup flow ပါဝင်သည်။
+
+```js
+// ── Step 1: Primary login ──────────────────────────────────────────────────
+dispatch(primaryMfaLogin({ username, password }));
+// → state.step = 'pending_otp'  (MFA required — show OTP screen)
+// → state.step = 'verified'     (MFA not enabled — skip to app)
+
+// ── Step 2: OTP screen ─────────────────────────────────────────────────────
+const { step, mfaMethod, otpCountdown, failedAttempts, lockedUntil, verifying } =
+  useSelector(s => s.mfa);
+
+// Start countdown when OTP screen mounts:
+useEffect(() => {
+  if (step === 'pending_otp') dispatch(startMfaOtpCountdown());
+}, [step]);
+
+// Verify OTP:
+dispatch(verifyMfaOtp({ otp: '123456', sessionToken: state.mfa.sessionToken }));
+// → state.step = 'verified', state.accessToken set
+
+// Resend OTP (SMS/Email):
+dispatch(resendMfaOtp(state.mfa.sessionToken));
+dispatch(startMfaOtpCountdown()); // restart countdown
+
+// JSX hints:
+// <input maxLength={6} placeholder="6-digit code" />
+// {otpCountdown > 0
+//   ? <span>OTP သက်တမ်း: {otpCountdown}s</span>
+//   : <button onClick={handleResend} disabled={resending}>OTP ထပ်တောင်းရန်</button>}
+// {lockedUntil && Date.now() < lockedUntil && (
+//   <Alert>၃ ကြိမ် မမှန်ပါ — ၅ မိနစ် ကြာမှ ထပ်ကြိုးစားနိုင်သည်</Alert>
+// )}
+// {mfaMethod === 'totp' && <p>Authenticator App မှ Code ကို ထည့်ပါ</p>}
+// {mfaMethod === 'sms'  && <p>SMS ဖြင့် ပို့ထားသော Code ကို ထည့်ပါ</p>}
+
+// ── TOTP Setup (Settings page) ─────────────────────────────────────────────
+dispatch(setupMfaTotp());
+// → state.totpQrUri   — QR code URI (use qrcode.react or similar library)
+// → state.totpSecret  — manual entry fallback
+// → state.backupCodes — one-time codes, show once and ask user to save
+
+// <QRCode value={totpQrUri} />
+// <p>Manual key: {totpSecret}</p>
+// <p>Backup codes: {backupCodes.join(', ')}</p>
+
+// After user scans QR and enters verification code:
+dispatch(confirmMfaTotpSetup({ otp: '123456', secret: state.mfa.totpSecret }));
+// → state.mfaEnabled = true, step = 'setup_confirmed'
+dispatch(clearMfaTokens()); // wipe QR/secret from state
+
+// ── Disable MFA ────────────────────────────────────────────────────────────
+dispatch(disableMfaMfa({ password: currentPassword }));
+// → state.mfaEnabled = false
+```
+
 ### Optimistic UI slice usage
 
 ```js
@@ -1190,6 +1397,90 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   latencyMs: null,         // last successful ping round-trip ms
   serverStatus: 'unknown', // 'healthy' | 'degraded' | 'down' | 'unknown'
   pingError: null,
+}
+```
+
+**`focusrevalidation` slice:**
+```js
+{
+  data: [],
+  loading: false,
+  revalidating: false,   // true during silent background refetch — don't show full spinner
+  error: null,
+  lastFetchedAt: null,   // epoch ms — used to decide if data is stale
+}
+```
+
+**`circuitbreaker` slice:**
+```js
+{
+  data: [],
+  loading: false,
+  error: null,
+  success: false,
+  circuitState: 'closed',   // 'closed' | 'open' | 'half_open'
+  consecutiveFailures: 0,
+  consecutiveSuccesses: 0,
+  serverStatus: 'unknown',  // 'healthy' | 'degraded' | 'down' | 'unknown'
+  lastPingAt: null,
+  latencyMs: null,
+  blockedCount: 0,          // requests blocked while circuit was open
+}
+```
+
+**`gracefuldegradation` slice:**
+```js
+{
+  data: [],
+  loading: false,
+  error: null,
+  success: false,
+  degraded: false,          // true = offline or server down
+  fromCache: false,         // true = current data served from localStorage cache
+  cachedAt: null,           // ISO timestamp of cache
+  cacheAvailable: false,    // false = no cache exists (blank-screen risk)
+}
+```
+
+**`sessionidle` slice:**
+```js
+{
+  sessionActive: false,     // true after login, false after logout
+  showingWarning: false,    // true during the 60s countdown before auto-logout
+  loggedOutReason: null,    // 'idle' | 'manual' | null
+  logoutLoading: false,
+  error: null,
+  loginAt: null,            // ISO timestamp of session start
+  lastActivityAt: null,     // ISO timestamp of most recent user activity
+}
+```
+
+**`mfa` slice:**
+```js
+{
+  step: 'idle',             // 'idle' | 'pending_otp' | 'verified' | 'setup' | 'setup_confirmed'
+  sessionToken: null,       // short-lived token from step-1 login, passed to OTP verify
+  mfaMethod: null,          // 'totp' | 'sms' | 'email'
+  mfaEnabled: false,        // whether user has MFA active on their account
+
+  otpCountdown: 0,          // seconds until resend is allowed (counts down from 60)
+
+  failedAttempts: 0,        // wrong OTP attempts in current session
+  lockedUntil: null,        // epoch ms — null = not locked; check Date.now() < lockedUntil
+
+  totpSecret: null,         // TOTP raw secret — clear after setup confirmed
+  totpQrUri: null,          // otpauth:// URI — pass to QR code renderer
+  backupCodes: [],          // one-time backup codes — show once then dispatch clearMfaTokens()
+
+  accessToken: null,        // set after successful MFA verification
+  user: null,               // user object from server
+
+  loading: false,
+  verifying: false,         // OTP verification in progress
+  resending: false,         // OTP resend in progress
+  setupLoading: false,      // TOTP setup/confirm in progress
+  error: null,
+  success: false,
 }
 ```
 
