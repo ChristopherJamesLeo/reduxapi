@@ -151,16 +151,16 @@ export default {{lowerName}}Slice.reducer;
 //      const { showingWarning, sessionActive } = useSelector(s => s.{{lowerName}});
 //      {showingWarning && (
 //        <Modal>
-//          <p>⏳ ၁ မိနစ်အတွင်း Auto Logout ဖြစ်မည်</p>
-//          <button onClick={() => dispatch(reset{{Name}}IdleTimer())}>ဆက်သုံးမည်</button>
-//          <button onClick={() => dispatch(logout{{Name}}())}>ထွက်မည်</button>
+//          <p>⏳ You will be logged out in 60 seconds due to inactivity</p>
+//          <button onClick={() => dispatch(reset{{Name}}IdleTimer())}>Stay logged in</button>
+//          <button onClick={() => dispatch(logout{{Name}}())}>Log out now</button>
 //        </Modal>
 //      )}
 //
 // 4. Show "Logged out due to inactivity" message on login page:
 //      const { loggedOutReason } = useSelector(s => s.{{lowerName}});
 //      {loggedOutReason === 'idle' && (
-//        <Alert>မသက်ဆိုင်မှုကြောင့် အလိုအလျောက် Log Out ဖြစ်သွားပါသည်</Alert>
+//        <Alert>You were automatically logged out due to inactivity</Alert>
 //      )}
 //
 // Config (top of file):

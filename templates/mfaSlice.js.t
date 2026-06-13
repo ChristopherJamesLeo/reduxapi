@@ -33,10 +33,10 @@ export const verify{{Name}}Otp = createAsyncThunk(
     const { lockedUntil } = getState().{{lowerName}};
     if (lockedUntil && Date.now() < lockedUntil) {
       const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
-      return rejectWithValue(`အကောင့် ယာယီ ပိတ်ဆို့ထားသည်။ ${remaining}s ကျော်မှ ထပ်ကြိုးစားပါ`);
+      return rejectWithValue(`Account temporarily locked. Try again in ${remaining}s`);
     }
     if (!otp || otp.length !== OTP_LENGTH) {
-      return rejectWithValue(`OTP ${OTP_LENGTH} လုံး ထည့်သွင်းပါ`);
+      return rejectWithValue(`Please enter a ${OTP_LENGTH}-digit OTP code`);
     }
 
     try {
@@ -58,7 +58,7 @@ export const resend{{Name}}Otp = createAsyncThunk(
   async (sessionToken, { getState, rejectWithValue }) => {
     const { otpCountdown } = getState().{{lowerName}};
     if (otpCountdown > 0) {
-      return rejectWithValue(`${otpCountdown}s ကျော်မှ ထပ်တောင်းနိုင်သည်`);
+      return rejectWithValue(`Please wait ${otpCountdown}s before requesting a new code`);
     }
     try {
       const response = await axios.post(`${API_URL}/auth/mfa/resend`, { sessionToken });
@@ -352,11 +352,11 @@ export default {{lowerName}}Slice.reducer;
 //   <input maxLength={6} placeholder="6-digit code" ... />
 //
 //   {otpCountdown > 0
-//     ? <span>OTP သက်တမ်း: {otpCountdown}s</span>
-//     : <button onClick={handleResend}>OTP ထပ်တောင်းရန်</button>}
+//     ? <span>Code expires in: {otpCountdown}s</span>
+//     : <button onClick={handleResend}>Resend code</button>}
 //
 //   {lockedUntil && Date.now() < lockedUntil && (
-//     <Alert>အကြိမ် {MAX_ATTEMPTS} ကြိမ် မမှန်ပါ။ ယာယီ ပိတ်ဆို့ထားသည်</Alert>
+//     <Alert>Too many incorrect attempts — account temporarily locked</Alert>
 //   )}
 //
 // ── TOTP Setup flow ──────────────────────────────────────────────────────────

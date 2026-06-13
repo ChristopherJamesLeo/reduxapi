@@ -155,8 +155,8 @@ export default {{lowerName}}Slice.reducer;
 //
 // 4. Show maintenance banner:
 //      const { circuitState, serverStatus, latencyMs } = useSelector(s => s.{{lowerName}});
-//      {circuitState === 'open' && <Banner>Server ခေတ္တ ပြုပြင်နေပါသည်</Banner>}
-//      {circuitState === 'half_open' && <Banner type="warning">ပြန်ချိတ်ဆက်နေသည်…</Banner>}
+//      {circuitState === 'open' && <Banner>Server is under maintenance</Banner>}
+//      {circuitState === 'half_open' && <Banner type="warning">Reconnecting…</Banner>}
 //      {circuitState === 'closed' && <span>🟢 {latencyMs}ms</span>}
 //
 // Config (customize at top of file):

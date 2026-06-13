@@ -46,7 +46,7 @@ export const fetch{{Name}}s = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const { circuitState } = getState().{{lowerName}};
     if (circuitState === 'open') {
-      return rejectWithValue({ blocked: true, message: 'Server ခေတ္တ ပြင်ဆင်နေပါသည်' });
+      return rejectWithValue({ blocked: true, message: 'Server is currently under maintenance' });
     }
 
     try {
@@ -209,10 +209,10 @@ export default {{lowerName}}Slice.reducer;
 //      if (circuitState === 'open') return rejectWithValue('Blocked by circuit breaker');
 //
 // 4. Show maintenance UI:
-//      {circuitState === 'open'      && <Banner>⚠️ Server ခေတ္တ ပြင်ဆင်နေပါသည်</Banner>}
-//      {circuitState === 'half_open' && <Banner>🔄 ပြန်ချိတ်ဆက်နေသည်…</Banner>}
+//      {circuitState === 'open'      && <Banner>⚠️ Server is under maintenance</Banner>}
+//      {circuitState === 'half_open' && <Banner>🔄 Reconnecting…</Banner>}
 //      {circuitState === 'closed'    && <span>🟢 {latencyMs}ms</span>}
-//      {serverStatus === 'degraded'  && <Banner>⚡ Server တုံ့ပြန်မှု နှေးနေသည်</Banner>}
+//      {serverStatus === 'degraded'  && <Banner>⚡ Server responding slowly</Banner>}
 //
 // Config (top of file):
 //   FAILURE_THRESHOLD = 5       consecutive fails  → open circuit

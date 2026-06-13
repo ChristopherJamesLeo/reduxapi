@@ -48,7 +48,7 @@ export const create{{Name}} = createAsyncThunk(
   async (newData, { getState, rejectWithValue }) => {
     const { degraded } = getState().{{lowerName}};
     if (degraded) {
-      return rejectWithValue('Offline mode: ဖန်တီးမှုများကို ယာယီ မပြုလုပ်နိုင်ပါ');
+      return rejectWithValue('Offline mode: create operations are temporarily unavailable');
     }
     try {
       const response = await axios.post(API_URL, newData);
@@ -64,7 +64,7 @@ export const update{{Name}} = createAsyncThunk(
   async ({ id, updateData }, { getState, rejectWithValue }) => {
     const { degraded } = getState().{{lowerName}};
     if (degraded) {
-      return rejectWithValue('Offline mode: ပြင်ဆင်မှုများကို ယာယီ မပြုလုပ်နိုင်ပါ');
+      return rejectWithValue('Offline mode: update operations are temporarily unavailable');
     }
     try {
       const response = await axios.put(`${API_URL}/${id}`, updateData);
@@ -80,7 +80,7 @@ export const delete{{Name}} = createAsyncThunk(
   async (id, { getState, rejectWithValue }) => {
     const { degraded } = getState().{{lowerName}};
     if (degraded) {
-      return rejectWithValue('Offline mode: ဖျက်သိမ်းမှုများကို ယာယီ မပြုလုပ်နိုင်ပါ');
+      return rejectWithValue('Offline mode: delete operations are temporarily unavailable');
     }
     try {
       await axios.delete(`${API_URL}/${id}`);
@@ -205,10 +205,10 @@ export default {{lowerName}}Slice.reducer;
 //
 // 3. Show degradation banners:
 //      {degraded && fromCache && (
-//        <Banner>📦 Offline Mode — {cachedAt} မှ Cache Data ပြသနေသည်</Banner>
+//        <Banner>📦 Offline — showing cached data from {new Date(cachedAt).toLocaleString()}</Banner>
 //      )}
 //      {degraded && !cacheAvailable && (
-//        <ErrorPage>⚠️ Server ချိတ်ဆက်မရ၊ Cache Data လည်း မရှိပါ</ErrorPage>
+//        <ErrorPage>⚠️ Server unreachable and no cached data available</ErrorPage>
 //      )}
 //      {!degraded && fromCache === false && <span>🟢 Live data</span>}
 //
