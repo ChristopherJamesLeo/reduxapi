@@ -28,17 +28,16 @@ After installing locally, use the `reduxapi` binary:
 
 ```bash
 # After npm install (local project)
-npx reduxapi make:api <name> [options]
+npx reduxapi make:<type> <name> -u <url>
 
 # One-time use without installing
-npx @christopherjamesleo/reduxapi-helper make:api <name> [options]
+npx @christopherjamesleo/reduxapi-helper make:<type> <name> -u <url>
 ```
 
 ### Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-t, --type <type>` | Template type (see below) | `crud` |
 | `-u, --url <url>` | API base URL | `https://your-api-url.com` |
 
 ### Template Types
@@ -81,186 +80,186 @@ npx @christopherjamesleo/reduxapi-helper make:api <name> [options]
 
 **Basic CRUD slice:**
 ```bash
-npx reduxapi make:api Product
+npx reduxapi make:crud Product -u https://api.example.com
 ```
 Generates `productSlice.js` with `fetchProducts`, `createProduct`, `updateProduct`, `deleteProduct`.
 
 **Bearer token CRUD:**
 ```bash
-npx reduxapi make:api Order -t token -u https://api.example.com/orders
+npx reduxapi make:token Order -u https://api.example.com/orders
 ```
 Reads `token` from `state.auth.token` and attaches `Authorization: Bearer <token>` to every request.
 
 **Auth slice:**
 ```bash
-npx reduxapi make:api auth -t auth -u https://api.example.com
+npx reduxapi make:auth all -u https://api.example.com
 ```
-Generates `authSlice.js` with `login`, `register`, `logout` thunks and persists token to `localStorage`.
+Generates `loginSlice.js`, `registerSlice.js`, `logoutSlice.js` and persists token to `localStorage`.
 
 **Create-only slice:**
 ```bash
-npx reduxapi make:api ContactForm -t create -u https://api.example.com/contact
+npx reduxapi make:create ContactForm -u https://api.example.com/contact
 ```
 
 **Custom header CRUD:**
 ```bash
-npx reduxapi make:api Order -t customheader -u https://api.example.com
+npx reduxapi make:customheader Order -u https://api.example.com
 ```
 Generates a slice with a `getHeaders()` helper function. Edit it to add any headers you need.
 
 **Two-step secret key CRUD:**
 ```bash
-npx reduxapi make:api Room -t secretkey -u https://api.yourhotel.com/v1
+npx reduxapi make:secretkey Room -u https://api.yourhotel.com/v1
 ```
 Every request automatically fetches a fresh secret key from `GET /get-secret-key` first, then sends the real request with `X-Custom-Secret-Key` in the header.
 
 **Infinite scroll slice:**
 ```bash
-npx reduxapi make:api Post -t infinite -u https://api.example.com
+npx reduxapi make:infinite Post -u https://api.example.com
 ```
 Appends pages to `state.data` on each load-more call. Tracks `hasMore` and `nextCursor` automatically.
 
 **Search / filter slice:**
 ```bash
-npx reduxapi make:api Product -t search -u https://api.example.com
+npx reduxapi make:search Product -u https://api.example.com
 ```
 Passes any filter object as query params. Includes `setFilters` and `clearFilters` reducers.
 
 **File upload slice:**
 ```bash
-npx reduxapi make:api Avatar -t upload -u https://api.example.com
+npx reduxapi make:upload Avatar -u https://api.example.com
 ```
 Accepts plain objects containing `File` values and converts them to `FormData` automatically.
 
 **Polling slice:**
 ```bash
-npx reduxapi make:api Notification -t polling -u https://api.example.com
+npx reduxapi make:polling Notification -u https://api.example.com
 ```
 Provides `startPollingNotification(5000)` and `stopPollingNotification()` thunk helpers.
 
 **Analytics / dashboard slice:**
 ```bash
-npx reduxapi make:api Report -t analytics -u https://api.example.com
+npx reduxapi make:analytics Report -u https://api.example.com
 ```
 Three separate thunks — `fetchReportSummary`, `fetchReportChart`, `fetchReportMetrics` — each with its own loading flag.
 
 **Optimistic UI slice:**
 ```bash
-npx reduxapi make:api Task -t optimistic -u https://api.example.com
+npx reduxapi make:optimistic Task -u https://api.example.com
 ```
 Updates the list immediately via `optimisticAddTask` / `optimisticUpdateTask` / `optimisticRemoveTask`, then confirms or rolls back when the API responds.
 
 **Cache + Stale-While-Revalidate slice:**
 ```bash
-npx reduxapi make:api Room -t cache -u https://api.example.com
+npx reduxapi make:cache Room -u https://api.example.com
 ```
 Returns Redux-cached data instantly, then silently re-fetches in background. Shows stale data while fresh data loads — zero perceived latency.
 
 **Debounce / Throttle slice:**
 ```bash
-npx reduxapi make:api Hotel -t debounce -u https://api.example.com
+npx reduxapi make:debounce Hotel -u https://api.example.com
 ```
 Built-in `debouncedHotelSearch(dispatch, params)` (500 ms) and `throttledHotelSubmit(dispatch, data)` (2 s) helpers — no extra libraries needed.
 
 **Auto-retry slice:**
 ```bash
-npx reduxapi make:api Payment -t retry -u https://api.example.com
+npx reduxapi make:retry Payment -u https://api.example.com
 ```
 Every thunk silently retries up to 3 times (2 s → 4 s → 6 s) on network errors or 5xx. Only surfaces the error to the UI after all retries are exhausted.
 
 **Snapshot rollback slice:**
 ```bash
-npx reduxapi make:api Bookmark -t rollback -u https://api.example.com
+npx reduxapi make:rollback Bookmark -u https://api.example.com
 ```
 Takes a deep snapshot before every optimistic mutation. On any API failure, state is fully restored to exactly what it was — no manual undo logic needed.
 
 **Auto token-refresh slice:**
 ```bash
-npx reduxapi make:api Auth -t tokenrefresh -u https://api.example.com
+npx reduxapi make:tokenrefresh Auth -u https://api.example.com
 ```
 Generates an `apiClient` (axios instance) + `setupApiInterceptors(store)`. On 401, silently refreshes the token and retries the original request. Concurrent requests are queued and replayed automatically.
 
 **Offline sync slice:**
 ```bash
-npx reduxapi make:api Booking -t offline -u https://api.example.com
+npx reduxapi make:offline Booking -u https://api.example.com
 ```
 Queues all mutations (create/update/delete) to localStorage when offline. Auto-syncs when network returns. Items show `_queued: true` in the UI until confirmed.
 
 **Optimistic pre-fetch slice:**
 ```bash
-npx reduxapi make:api Room -t prefetch -u https://api.example.com
+npx reduxapi make:prefetch Room -u https://api.example.com
 ```
 Call `dispatch(prefetchRoom(id))` on `onMouseEnter` or `IntersectionObserver`. When the user navigates to the detail page, data is already in cache — 0 ms loading time.
 
 **Batching slice:**
 ```bash
-npx reduxapi make:api User -t batch -u https://api.example.com
+npx reduxapi make:batch User -u https://api.example.com
 ```
 Three components each call `dispatch(requestUser(id))` within 50 ms — only one request fires: `GET /user?ids=1,2,3`. Backend must accept a comma-separated `ids` param.
 
 **Deduplication slice:**
 ```bash
-npx reduxapi make:api Settings -t dedupe -u https://api.example.com
+npx reduxapi make:dedupe Settings -u https://api.example.com
 ```
 Sidebar, Header, and Footer all call `dispatch(fetchSettings())` on mount — only one API call is made. All three components receive the same response once it resolves.
 
 **WebSocket / SSE slice:**
 ```bash
-npx reduxapi make:api Room -t websocket -u https://api.example.com
+npx reduxapi make:websocket Room -u https://api.example.com
 ```
 Connects a WebSocket (or SSE) stream. Incoming events (`room.created`, `room.updated`, `room.deleted`) are routed directly into Redux state — no polling, no refresh button needed.
 
 **Data streaming slice:**
 ```bash
-npx reduxapi make:api Chat -t stream -u https://api.example.com
+npx reduxapi make:stream Chat -u https://api.example.com
 ```
 Supports both `EventSource` (SSE GET) and `fetch`-based streaming (POST body). Appends tokens one-by-one into `state.streamText` — ideal for LLM/ChatGPT-style output.
 
 **Abort / cancellation slice:**
 ```bash
-npx reduxapi make:api Report -t abort -u https://api.example.com
+npx reduxapi make:abort Report -u https://api.example.com
 ```
 Every thunk receives RTK's `signal` and passes it to axios. Call `promise.abort()` in `useEffect` cleanup to cancel in-flight requests on unmount — prevents memory leaks and race conditions.
 
 **Encrypted state slice:**
 ```bash
-npx reduxapi make:api Profile -t encrypt -u https://api.example.com
+npx reduxapi make:encrypt Profile -u https://api.example.com
 ```
 Fetched data is AES-256-GCM encrypted before entering Redux state. Plaintext lives only in memory after calling `unlockProfile()`. `purgeProfile()` wipes everything including sessionStorage.
 
 **Heartbeat + Circuit Breaker slice:**
 ```bash
-npx reduxapi make:api System -t heartbeat -u https://api.example.com
+npx reduxapi make:heartbeat System -u https://api.example.com
 ```
 Pings `GET /health` every 5 s. After 5 consecutive failures the circuit opens — all API calls can check `circuitState === 'open'` to bail early. Auto-probes recovery after 30 s.
 
 **Focus Revalidation slice:**
 ```bash
-npx reduxapi make:api Post -t focusrevalidation -u https://api.example.com
+npx reduxapi make:focusrevalidation Post -u https://api.example.com
 ```
 Silently refetches stale data in the background whenever the user switches back to the tab or unlocks their phone screen. Uses `revalidating` state to show a subtle refresh indicator without blocking the UI.
 
 **Advanced Circuit Breaker slice:**
 ```bash
-npx reduxapi make:api Order -t circuitbreaker -u https://api.example.com
+npx reduxapi make:circuitbreaker Order -u https://api.example.com
 ```
 Similar to `heartbeat` but also counts failures from real API calls, not just health pings. Tracks `blockedCount` to show how many requests were blocked while the circuit was open.
 
 **Graceful Degradation slice:**
 ```bash
-npx reduxapi make:api Product -t gracefuldegradation -u https://api.example.com
+npx reduxapi make:gracefuldegradation Product -u https://api.example.com
 ```
 Serves cached data from localStorage when the server is unreachable. Blocks write operations in degraded mode to prevent data loss. Automatically refreshes when the network comes back.
 
 **Session Idle Timeout slice:**
 ```bash
-npx reduxapi make:api Session -t sessionidle -u https://api.example.com
+npx reduxapi make:sessionidle Session -u https://api.example.com
 ```
 Auto-logout after 5 minutes of inactivity. Shows a 60-second warning modal before logging out. Clears session tokens and sensitive state on logout.
 
 **MFA (Multi-Factor Authentication) slice:**
 ```bash
-npx reduxapi make:api Mfa -t mfa -u https://api.example.com
+npx reduxapi make:mfa Mfa -u https://api.example.com
 ```
 Two-step login flow: password → OTP verification. Supports TOTP (Google Authenticator), SMS, and email OTP. Includes a 60-second countdown timer, 5-minute lockout after 3 failed attempts, and a full QR code setup flow for TOTP enrollment.
 
@@ -582,7 +581,7 @@ dispatch(createBookmark({ _tempId: tempId, title: 'My Hotel' }));
 
 **Step 1 — Generate the slice:**
 ```bash
-npx reduxapi make:api Auth -t tokenrefresh -u https://api.example.com
+npx reduxapi make:tokenrefresh Auth -u https://api.example.com
 ```
 
 **Step 2 — Wire up interceptors in `main.jsx` (once, after store is created):**
