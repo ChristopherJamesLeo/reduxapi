@@ -128,7 +128,7 @@ Also exposes `links` and `meta` for the paginated fetch:
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 `reduxapi` only generates the frontend Redux slice — your backend must expose matching REST routes. The `crud` template (`npx reduxapi make:crud Product -u https://api.example.com`) expects:
 
@@ -259,7 +259,7 @@ npx reduxapi make:create ContactForm -u https://api.example.com/contact
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Single `POST` endpoint, same response shape as `crud`'s create action.
 
@@ -305,7 +305,7 @@ Reads `token` from `state.auth.token` and attaches `Authorization: Bearer <token
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Same routes as `crud`, but every request must be authenticated via `Authorization: Bearer <token>`.
 
@@ -361,7 +361,7 @@ dispatch(logout());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 ```php
 // routes/api.php
@@ -456,7 +456,7 @@ Also exposes `links` and `meta` for the paginated fetch:
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Same CRUD routes as `crud`, but the server must accept (and may validate) the custom headers your `getHeaders()` sends (e.g. `Authorization`, `X-App-Version`, `Accept-Language`).
 
@@ -529,7 +529,7 @@ const secureHeaders = (secretKey) => ({
 
 **State shape:** same as `crud`/`customheader` — `data`, `links`, `meta`, `loading`, `error`, `success`.
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 ```php
 // routes/api.php
@@ -594,7 +594,7 @@ dispatch(fetchPosts());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 `GET /post?cursor=<cursor>` must return the next page plus a cursor and a flag/marker for whether more pages exist.
 
@@ -657,7 +657,7 @@ dispatch(clearProductFilters());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 `GET /product` accepts arbitrary query params (filters) and returns matching results plus optional pagination meta.
 
@@ -720,7 +720,7 @@ if (success) dispatch(resetAvatarUpload());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Requests arrive as `multipart/form-data`. Update uses `POST` + `_method: PUT` (Laravel form-method spoofing).
 
@@ -782,7 +782,7 @@ useEffect(() => {
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard `GET` endpoint, polled repeatedly by the client at a fixed interval — no special headers, just keep it fast/cacheable.
 
@@ -838,7 +838,7 @@ dispatch(clearReportData()); // clear on unmount
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Three separate `GET` endpoints, one per thunk: `/report/summary`, `/report/chart`, `/report/metrics`.
 
@@ -905,7 +905,7 @@ dispatch(deleteTask(1));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard REST endpoint, same shape as the `crud` example above — no special headers or response format required.
 
@@ -962,7 +962,7 @@ dispatch(invalidateRoomCache());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard `GET /room` endpoint — caching/TTL logic is purely client-side in Redux, no special backend contract needed.
 
@@ -1020,7 +1020,7 @@ dispatch(clearHotelResults());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard REST endpoint, same shape as the `crud` example above — debounce/throttle is purely client-side, no special headers or response format required.
 
@@ -1061,7 +1061,7 @@ dispatch(createPayment({ amount: 500, currency: 'AED' }));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard REST endpoint, same shape as the `crud` example above — retry logic on 5xx/network errors is purely client-side. Make sure your backend returns proper 5xx status codes on real failures so the retry logic can detect them.
 
@@ -1113,7 +1113,7 @@ dispatch(createBookmark({ _tempId: tempId, title: 'My Hotel' }));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard REST endpoint, same shape as the `crud` example above — no special headers or response format required; the rollback behavior lives entirely in the Redux slice.
 
@@ -1177,7 +1177,7 @@ dispatch(logoutAuth());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Needs `/login` (returns access + refresh tokens) and `/auth/refresh` (exchanges a refresh token for a new access token). All other endpoints expect `Authorization: Bearer <accessToken>` and should return 401 on expiry so the interceptor can refresh and retry.
 
@@ -1250,7 +1250,7 @@ dispatch(deleteBooking(1));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard CRUD routes, identical to `crud` — the offline queue/sync logic is entirely client-side; queued mutations are simply replayed as normal POST/PUT/DELETE calls once back online.
 
@@ -1309,7 +1309,7 @@ dispatch(fetchRoomById(id));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard list + by-id endpoints: `GET /room` and `GET /room/:id` — prefetching is just calling the by-id endpoint early, no special backend contract needed.
 
@@ -1366,7 +1366,7 @@ dispatch(fetchUserByIds([1, 2, 3]));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 `GET /user?ids=1,2,3` must return an array of matching items.
 
@@ -1426,7 +1426,7 @@ dispatch(fetchSettingsById(5)); // Component 2 — waits on same Promise, no sec
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard REST endpoints, same shape as `crud` — deduplication of in-flight requests is purely client-side; the backend just needs normal `GET /settings` and `GET /settings/:id` routes.
 
@@ -1502,7 +1502,7 @@ dispatch(connectRoomSSE()); // connects to GET /room/stream
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Needs the normal `GET /room` REST list, plus a WebSocket endpoint at `ws(s)://.../ws/room` (or SSE fallback at `GET /room/stream`) that pushes `{ type, data }` events.
 
@@ -1575,7 +1575,7 @@ dispatch(resetChatStream()); // reset output for new conversation
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 `POST /chat/stream` (body request) and `GET /chat/stream` (SSE) must respond with `Content-Type: text/event-stream`, sending chunks as `data: <token>\n\n` and a final `data: [DONE]\n\n`.
 
@@ -1650,7 +1650,7 @@ req.current = dispatch(fetchReportById(id));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard REST endpoint, same shape as the `crud` example above — request cancellation is handled entirely client-side via `AbortController`/RTK's `signal`; the server simply stops processing if the client disconnects.
 
@@ -1705,7 +1705,7 @@ dispatch(purgeProfile());
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard `GET`/`POST` endpoint returning plain JSON — encryption happens entirely client-side after the response is received, so the backend contract is identical to `crud`.
 
@@ -1771,7 +1771,7 @@ useEffect(() => {
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 `GET /health` must respond quickly (used to measure `latencyMs`) and simply return 200 OK when healthy.
 
@@ -1823,7 +1823,7 @@ useEffect(() => { dispatch(fetchPosts()); }, []);
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard REST endpoint, same shape as the `crud` example above — no special headers or response format required; revalidation is triggered client-side on window/tab focus.
 
@@ -1875,7 +1875,7 @@ useEffect(() => {
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Needs both `GET /health` (for the periodic ping) and the normal CRUD endpoints for `Order` — failures on either feed into the circuit breaker's failure count.
 
@@ -1934,7 +1934,7 @@ const { data, loading, degraded, fromCache, cachedAt, cacheAvailable, error } =
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Standard CRUD routes, same as `crud` — degradation/fallback-to-cache logic is entirely client-side, triggered when requests time out or fail.
 
@@ -1996,7 +1996,7 @@ const { showingWarning, loggedOutReason } = useSelector(s => s.session);
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Only needs a `POST /logout` endpoint, called automatically (and silently) when the idle timer fires or the user manually logs out.
 
@@ -2102,7 +2102,7 @@ dispatch(disableMfaMfa({ password: currentPassword }));
 }
 ```
 
-**Backend example (Laravel + Node.js):**
+**Backend example (Laravel / Node.js):**
 
 Needs `/auth/login`, `/auth/mfa/verify`, `/auth/mfa/resend`, `/auth/mfa/setup`, `/auth/mfa/setup/confirm`, and `/auth/mfa/disable`.
 
