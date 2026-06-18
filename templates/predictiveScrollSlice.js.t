@@ -6,6 +6,32 @@ const API_URL = '{{apiUrl}}/{{lowerName}}';
 const MAX_CACHE_SIZE = 50;       // LRU cap — oldest entry evicted past this size
 const CACHE_TTL = 5 * 60 * 1000; // 5 min — entries older than this are refetched
 const BATCH_WINDOW = 50;         // ms — ids queued within this window share 1 request
+const SCROLL_VELOCITY_THRESHOLD = 2.5; // px/ms — above this, prefetching pauses
+
+// ─── Scroll Velocity Gatekeeper ────────────────────────────────────────────
+// speed = (distance scrolled) / (time elapsed), sampled on every scroll event.
+// While the user is flinging the list (speed > threshold) prefetching is
+// paused — there's no point warming rows the user is blowing past, and it
+// would only add wasted requests on top of an already-fast scroll.
+
+let _lastScrollY = null;
+let _lastScrollTime = null;
+
+function computeScrollVelocity(currentY) {
+  const now = performance.now();
+  if (_lastScrollY === null) {
+    _lastScrollY = currentY;
+    _lastScrollTime = now;
+    return 0;
+  }
+  const distance = Math.abs(currentY - _lastScrollY);
+  const elapsed = now - _lastScrollTime || 1; // avoid divide-by-zero
+  const speed = distance / elapsed;           // px/ms
+
+  _lastScrollY = currentY;
+  _lastScrollTime = now;
+  return speed;
+}
 
 // ─── Network-aware guard ──────────────────────────────────────────────────
 // Skips prefetching on data-saver mode or slow connections (2g/slow-2g).
@@ -56,11 +82,27 @@ export const fetch{{Name}}s = createAsyncThunk(
   }
 );
 
+// Start watching scroll speed — call ONCE when the list mounts.
+// Returns an unsubscribe function for useEffect cleanup.
+export const startScrollVelocityGate{{Name}} = (scrollContainer) => (dispatch) => {
+  const target = scrollContainer || window;
+  const getY = () => (scrollContainer ? scrollContainer.scrollTop : window.scrollY);
+
+  const onScroll = () => {
+    const speed = computeScrollVelocity(getY());
+    dispatch(setScrollVelocity{{Name}}(speed));
+  };
+
+  target.addEventListener('scroll', onScroll, { passive: true });
+  return () => target.removeEventListener('scroll', onScroll);
+};
+
 // Call on hover / near-viewport (IntersectionObserver). Queues the id and
 // fires ONE batched request per BATCH_WINDOW ms — never one request per id.
 export const queuePrefetch{{Name}} = (id) => (dispatch, getState) => {
   if (!canPrefetch()) return;                          // respect data-saver / slow network
   const state = getState().{{lowerName}};
+  if (state.prefetchPaused) return;                     // user is flinging — skip entirely
   const cached = state.detailCache[id];
   const fresh = cached && Date.now() - state.fetchedAt[id] < CACHE_TTL;
   if (fresh || state.loadingIds.includes(id)) return;   // already warm or already queued
@@ -135,6 +177,9 @@ const {{lowerName}}Slice = createSlice({
     fetchedAt: {},         // { [id]: epoch ms } — for TTL staleness check
     loadingIds: [],        // ids currently being prefetched — UI can ignore these
 
+    scrollVelocity: 0,      // px/ms, updated on every scroll event
+    prefetchPaused: false,  // true while scrollVelocity > SCROLL_VELOCITY_THRESHOLD
+
     error: null,
   },
   reducers: {
@@ -154,6 +199,10 @@ const {{lowerName}}Slice = createSlice({
       state.detailCache = {};
       state.fetchedAt = {};
       state.cacheOrder = [];
+    },
+    setScrollVelocity{{Name}}: (state, action) => {
+      state.scrollVelocity = action.payload;
+      state.prefetchPaused = action.payload > SCROLL_VELOCITY_THRESHOLD;
     },
   },
   extraReducers: (builder) => {
@@ -237,17 +286,22 @@ const {{lowerName}}Slice = createSlice({
   },
 });
 
-export const { reset{{Name}}s, evict{{Name}}FromCache, clear{{Name}}Cache } = {{lowerName}}Slice.actions;
+export const { reset{{Name}}s, evict{{Name}}FromCache, clear{{Name}}Cache, setScrollVelocity{{Name}} } =
+  {{lowerName}}Slice.actions;
 export default {{lowerName}}Slice.reducer;
 
 // Usage:
 //
-// Initial load   → dispatch(fetch{{Name}}s())
-// Load more      → dispatch(fetch{{Name}}s({ cursor: state.{{lowerName}}.nextCursor }))
-// Warm on scroll → dispatch(queuePrefetch{{Name}}(id))   // IntersectionObserver callback
-// Open detail    → dispatch(fetch{{Name}}ById(id))       // instant if cache fresh
-// Reset & reload → dispatch(reset{{Name}}s())
+// Initial load     → dispatch(fetch{{Name}}s())
+// Load more        → dispatch(fetch{{Name}}s({ cursor: state.{{lowerName}}.nextCursor }))
+// Start the gate   → const stop = dispatch(startScrollVelocityGate{{Name}}());  // once, on mount
+//                    // cleanup: stop()
+// Warm on scroll   → dispatch(queuePrefetch{{Name}}(id))   // IntersectionObserver callback
+// Open detail      → dispatch(fetch{{Name}}ById(id))       // instant if cache fresh
+// Reset & reload   → dispatch(reset{{Name}}s())
 //
 // state.hasMore           → false when all pages fetched
 // state.loadingIds        → ids currently warming — never show a spinner for these
 // state.detailCache[id]   → read directly for instant render, skip dispatch entirely
+// state.scrollVelocity    → px/ms, live — useful for a debug HUD
+// state.prefetchPaused    → true while flinging (speed > 2.5px/ms) — show a subtle indicator

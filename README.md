@@ -2130,7 +2130,16 @@ router.post('/auth/mfa/disable', mfaController.disable);
 npx reduxapi make:predictivescroll Post -u https://api.example.com
 ```
 
-Combines cursor-based infinite scroll with look-ahead prefetching: rows near the viewport are queued and fetched as one batched `?ids=1,2,3` request, in-flight requests for the same id-set are deduped/aborted, slow connections or data-saver mode skip prefetching entirely, and the detail cache is capped (LRU) and time-limited (TTL) so memory never grows unbounded.
+Combines cursor-based infinite scroll with look-ahead prefetching: rows near the viewport are queued and fetched as one batched `?ids=1,2,3` request, in-flight requests for the same id-set are deduped/aborted, slow connections or data-saver mode skip prefetching entirely, the detail cache is capped (LRU) and time-limited (TTL) so memory never grows unbounded, and a **Scroll Velocity Gatekeeper** pauses prefetching outright while the user is flinging the list.
+
+**Scroll Velocity Gatekeeper:**
+
+```
+speed = (distance scrolled) / (time elapsed)   // px / ms, sampled on every scroll event
+if (speed > 2.5) → prefetchPaused = true       // pause — don't warm rows the user is blowing past
+```
+
+There's no point prefetching a row the user scrolls past in 20ms, and doing so anyway just stacks wasted requests on top of an already-fast scroll. The gate re-opens automatically the moment scroll speed drops back under the threshold — no manual reset needed.
 
 **Frontend usage:**
 
@@ -2139,17 +2148,25 @@ import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchPosts,
+  startScrollVelocityGatePost,
   queuePrefetchPost,
   fetchPostById,
   resetPosts,
 } from './store/postSlice';
 
 const dispatch = useDispatch();
-const { data, hasMore, nextCursor, loading, loadingMore, loadingIds, detailCache } =
+const { data, hasMore, nextCursor, loading, loadingMore, loadingIds, detailCache, prefetchPaused } =
   useSelector((s) => s.post);
 
 // Initial load
 useEffect(() => { dispatch(fetchPosts()); }, []);
+
+// Start the scroll-velocity gate ONCE — pauses prefetching automatically
+// while the user is flinging, re-opens once they slow down
+useEffect(() => {
+  const stop = dispatch(startScrollVelocityGatePost());
+  return stop; // removes the scroll listener on unmount
+}, []);
 
 // Load next page (e.g. on scroll-to-bottom sentinel)
 if (hasMore) dispatch(fetchPosts({ cursor: nextCursor }));
@@ -2180,6 +2197,7 @@ dispatch(fetchPosts());
 // UI hints:
 // loadingIds.includes(id) → only true on an actual cache miss, never for warm rows
 // loadingMore             → show a small "loading more…" footer, not a full spinner
+// prefetchPaused          → true while flinging — optionally show a tiny "⏸ prefetch paused" hint
 ```
 
 **State shape:**
@@ -2196,6 +2214,9 @@ dispatch(fetchPosts());
   cacheOrder: [],       // LRU order, oldest first — internal, don't read directly
   fetchedAt: {},        // { [id]: epoch ms } — used for TTL staleness checks
   loadingIds: [],       // ids currently being prefetched/fetched
+
+  scrollVelocity: 0,     // px/ms, updated on every scroll event
+  prefetchPaused: false, // true while scrollVelocity > 2.5px/ms (the Scroll Velocity Gatekeeper)
 
   error: null,
 }
