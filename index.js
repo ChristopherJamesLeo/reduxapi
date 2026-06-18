@@ -35,6 +35,7 @@ const TEMPLATE_MAP = {
   gracefuldegradation: 'gracefulDegradationSlice.js.t',
   sessionidle:         'sessionIdleSlice.js.t',
   mfa:                 'mfaSlice.js.t',
+  predictivescroll:    'predictiveScrollSlice.js.t',
 };
 
 async function generateSlice(name, type, apiUrl) {

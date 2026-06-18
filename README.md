@@ -75,6 +75,7 @@ npx @christopherjamesleo/reduxapi-helper make:<type> <name> -u <url>
 | `gracefuldegradation` | Graceful Degradation — falls back to localStorage cache when the server is down; app stays usable in read-only mode |
 | `sessionidle` | Session Idle Timeout — auto-logout after 5 min of inactivity, 60-second countdown warning, clears all sensitive state |
 | `mfa` | Multi-Factor Authentication — 2-step login (password → OTP), TOTP/SMS/email support, 60s countdown, lockout after 3 wrong attempts, QR setup flow |
+| `predictivescroll` | Predictive infinite scroll — combines cursor pagination with look-ahead prefetch, batched `?ids=` requests, AbortController dedupe, network-aware (data-saver) guard, and an LRU+TTL detail cache |
 
 
 ## Slice Templates
@@ -2121,6 +2122,154 @@ router.post('/auth/mfa/resend', mfaController.resend);
 router.post('/auth/mfa/setup', mfaController.setup);      // -> { totpQrUri, totpSecret, backupCodes }
 router.post('/auth/mfa/setup/confirm', mfaController.confirmSetup);
 router.post('/auth/mfa/disable', mfaController.disable);
+```
+
+### `predictivescroll` — Predictive infinite scroll
+
+```bash
+npx reduxapi make:predictivescroll Post -u https://api.example.com
+```
+
+Combines cursor-based infinite scroll with look-ahead prefetching: rows near the viewport are queued and fetched as one batched `?ids=1,2,3` request, in-flight requests for the same id-set are deduped/aborted, slow connections or data-saver mode skip prefetching entirely, and the detail cache is capped (LRU) and time-limited (TTL) so memory never grows unbounded.
+
+**Frontend usage:**
+
+```js
+import { useEffect, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchPosts,
+  queuePrefetchPost,
+  fetchPostById,
+  resetPosts,
+} from './store/postSlice';
+
+const dispatch = useDispatch();
+const { data, hasMore, nextCursor, loading, loadingMore, loadingIds, detailCache } =
+  useSelector((s) => s.post);
+
+// Initial load
+useEffect(() => { dispatch(fetchPosts()); }, []);
+
+// Load next page (e.g. on scroll-to-bottom sentinel)
+if (hasMore) dispatch(fetchPosts({ cursor: nextCursor }));
+
+// Warm the cache when a row nears the viewport — auto-batches within 50ms,
+// auto-skips on slow/data-saver connections, no manual debounce needed
+const observerRef = useRef(
+  new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        dispatch(queuePrefetchPost(entry.target.dataset.id));
+      }
+    });
+  })
+);
+// <li ref={(el) => el && observerRef.current.observe(el)} data-id={post.id}>
+
+// Navigate to detail page — 0ms if the row was already prefetched
+dispatch(fetchPostById(id));
+
+// Read the cache directly to render instantly, skip dispatch + spinner entirely
+const cached = detailCache[id];
+
+// Pull-to-refresh
+dispatch(resetPosts());
+dispatch(fetchPosts());
+
+// UI hints:
+// loadingIds.includes(id) → only true on an actual cache miss, never for warm rows
+// loadingMore             → show a small "loading more…" footer, not a full spinner
+```
+
+**State shape:**
+
+```js
+{
+  data: [],            // accumulated infinite-scroll items
+  nextCursor: null,
+  hasMore: true,
+  loading: false,
+  loadingMore: false,
+
+  detailCache: {},     // { [id]: item } — capped at 50 entries (LRU), 5 min TTL
+  cacheOrder: [],       // LRU order, oldest first — internal, don't read directly
+  fetchedAt: {},        // { [id]: epoch ms } — used for TTL staleness checks
+  loadingIds: [],       // ids currently being prefetched/fetched
+
+  error: null,
+}
+```
+
+**Backend example (Laravel / Node.js):**
+
+Needs the same cursor-paginated list endpoint as `infinite`, PLUS a batch endpoint that accepts a comma-separated `ids` param (same contract as `batch`) for prefetch:
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/post?cursor=...&limit=20` | Infinite-scroll page |
+| GET | `/post?ids=1,2,3` | Batched prefetch — returns those rows in one call |
+| GET | `/post/:id` | Single-item fetch (cache miss fallback) |
+
+```php
+// routes/api.php
+Route::get('/post', [PostController::class, 'index']); // handles cursor OR ids
+Route::get('/post/{id}', [PostController::class, 'show']);
+
+// app/Http/Controllers/PostController.php
+public function index(Request $request)
+{
+    if ($request->has('ids')) {
+        $ids = explode(',', $request->query('ids'));
+        return ['data' => Post::whereIn('id', $ids)->get()];
+    }
+
+    $limit = $request->query('limit', 20);
+    $query = Post::orderBy('id')->limit($limit);
+    if ($cursor = $request->query('cursor')) {
+        $query->where('id', '>', $cursor);
+    }
+    $items = $query->get();
+
+    return [
+        'data' => $items,
+        'next_cursor' => $items->isNotEmpty() ? $items->last()->id : null,
+    ];
+}
+
+public function show($id)
+{
+    return ['data' => Post::findOrFail($id)];
+}
+```
+
+```js
+// routes/post.js
+router.get('/', postController.index); // handles cursor OR ids
+router.get('/:id', postController.show);
+
+// controllers/postController.js
+exports.index = async (req, res) => {
+  if (req.query.ids) {
+    const ids = req.query.ids.split(',');
+    const data = await Post.find({ _id: { $in: ids } });
+    return res.json({ data });
+  }
+
+  const limit = parseInt(req.query.limit) || 20;
+  const filter = req.query.cursor ? { _id: { $gt: req.query.cursor } } : {};
+  const items = await Post.find(filter).sort({ _id: 1 }).limit(limit);
+
+  res.json({
+    data: items,
+    next_cursor: items.length ? items[items.length - 1]._id : null,
+  });
+};
+
+exports.show = async (req, res) => {
+  const post = await Post.findById(req.params.id);
+  res.json({ data: post });
+};
 ```
 
 ## Store Setup
