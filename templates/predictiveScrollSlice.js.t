@@ -6,16 +6,30 @@ const API_URL = '{{apiUrl}}/{{lowerName}}';
 const MAX_CACHE_SIZE = 50;       // LRU cap — oldest entry evicted past this size
 const CACHE_TTL = 5 * 60 * 1000; // 5 min — entries older than this are refetched
 const BATCH_WINDOW = 50;         // ms — ids queued within this window share 1 request
-const SCROLL_VELOCITY_THRESHOLD = 2.5; // px/ms — above this, prefetching pauses
+const SCROLL_PAUSE_THRESHOLD = 2.5;     // px/ms — crossing this (rising) pauses prefetch
+const SCROLL_RESUME_THRESHOLD = 1.5;    // px/ms — must drop below this (falling) to resume
+const VELOCITY_DISPATCH_INTERVAL = 100; // ms — throttle for the display-only velocity readout
 
-// ─── Scroll Velocity Gatekeeper ────────────────────────────────────────────
+// ─── Scroll Velocity Gatekeeper (with hysteresis) ──────────────────────────
 // speed = (distance scrolled) / (time elapsed), sampled on every scroll event.
-// While the user is flinging the list (speed > threshold) prefetching is
-// paused — there's no point warming rows the user is blowing past, and it
-// would only add wasted requests on top of an already-fast scroll.
+//
+// A single threshold causes "ping-pong pausing": real-world scrolling
+// (thumb flicks, stop-start drags) hovers right around any one cutoff, so
+// speed bounces above/below it many times a second, toggling prefetchPaused
+// — and dispatching — on every bounce. That floods Redux with actions and
+// re-renders every subscribed component purely from UI jitter, not data.
+//
+// The fix is hysteresis: a HIGH threshold to pause and a separate, LOWER
+// threshold to resume. Once paused, speed has to drop meaningfully (not
+// just dip 0.1 below the pause line) before resuming — closing the gap
+// the jitter lives in. `_isPaused` is also tracked in module scope so we
+// only ever dispatch when the boolean actually flips, never on every
+// scroll tick.
 
 let _lastScrollY = null;
 let _lastScrollTime = null;
+let _isPaused = false;
+let _lastVelocityDispatchAt = 0;
 
 function computeScrollVelocity(currentY) {
   const now = performance.now();
@@ -90,7 +104,25 @@ export const startScrollVelocityGate{{Name}} = (scrollContainer) => (dispatch) =
 
   const onScroll = () => {
     const speed = computeScrollVelocity(getY());
-    dispatch(setScrollVelocity{{Name}}(speed));
+    const now = performance.now();
+
+    // Hysteresis gate — dispatch ONLY when the paused/resumed boolean
+    // actually flips, never on every scroll tick. This is what kills the
+    // ping-pong: no state change, no action, no re-render.
+    if (!_isPaused && speed > SCROLL_PAUSE_THRESHOLD) {
+      _isPaused = true;
+      dispatch(setPrefetchPaused{{Name}}(true));
+    } else if (_isPaused && speed < SCROLL_RESUME_THRESHOLD) {
+      _isPaused = false;
+      dispatch(setPrefetchPaused{{Name}}(false));
+    }
+
+    // The numeric readout is informational only (debug HUD) — throttle it
+    // separately so it doesn't spam dispatch on every scroll event either.
+    if (now - _lastVelocityDispatchAt > VELOCITY_DISPATCH_INTERVAL) {
+      _lastVelocityDispatchAt = now;
+      dispatch(setScrollVelocity{{Name}}(speed));
+    }
   };
 
   target.addEventListener('scroll', onScroll, { passive: true });
@@ -177,8 +209,8 @@ const {{lowerName}}Slice = createSlice({
     fetchedAt: {},         // { [id]: epoch ms } — for TTL staleness check
     loadingIds: [],        // ids currently being prefetched — UI can ignore these
 
-    scrollVelocity: 0,      // px/ms, updated on every scroll event
-    prefetchPaused: false,  // true while scrollVelocity > SCROLL_VELOCITY_THRESHOLD
+    scrollVelocity: 0,      // px/ms, throttled display readout — don't gate logic on this
+    prefetchPaused: false,  // hysteresis-gated: true above 2.5px/ms, false again only below 1.5px/ms
 
     error: null,
   },
@@ -201,8 +233,10 @@ const {{lowerName}}Slice = createSlice({
       state.cacheOrder = [];
     },
     setScrollVelocity{{Name}}: (state, action) => {
-      state.scrollVelocity = action.payload;
-      state.prefetchPaused = action.payload > SCROLL_VELOCITY_THRESHOLD;
+      state.scrollVelocity = action.payload; // display-only, throttled
+    },
+    setPrefetchPaused{{Name}}: (state, action) => {
+      state.prefetchPaused = action.payload; // hysteresis-gated, only dispatched on change
     },
   },
   extraReducers: (builder) => {
@@ -286,8 +320,13 @@ const {{lowerName}}Slice = createSlice({
   },
 });
 
-export const { reset{{Name}}s, evict{{Name}}FromCache, clear{{Name}}Cache, setScrollVelocity{{Name}} } =
-  {{lowerName}}Slice.actions;
+export const {
+  reset{{Name}}s,
+  evict{{Name}}FromCache,
+  clear{{Name}}Cache,
+  setScrollVelocity{{Name}},
+  setPrefetchPaused{{Name}},
+} = {{lowerName}}Slice.actions;
 export default {{lowerName}}Slice.reducer;
 
 // Usage:
@@ -303,5 +342,5 @@ export default {{lowerName}}Slice.reducer;
 // state.hasMore           → false when all pages fetched
 // state.loadingIds        → ids currently warming — never show a spinner for these
 // state.detailCache[id]   → read directly for instant render, skip dispatch entirely
-// state.scrollVelocity    → px/ms, live — useful for a debug HUD
-// state.prefetchPaused    → true while flinging (speed > 2.5px/ms) — show a subtle indicator
+// state.scrollVelocity    → px/ms, throttled — useful for a debug HUD, not for gating logic
+// state.prefetchPaused    → hysteresis-gated (pause > 2.5px/ms, resume < 1.5px/ms) — no jitter

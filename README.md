@@ -2137,9 +2137,12 @@ Combines cursor-based infinite scroll with look-ahead prefetching: rows near the
 ```
 speed = (distance scrolled) / (time elapsed)   // px / ms, sampled on every scroll event
 if (speed > 2.5) → prefetchPaused = true       // pause — don't warm rows the user is blowing past
+if (speed < 1.5) → prefetchPaused = false      // resume — only once it's genuinely slowed down
 ```
 
-There's no point prefetching a row the user scrolls past in 20ms, and doing so anyway just stacks wasted requests on top of an already-fast scroll. The gate re-opens automatically the moment scroll speed drops back under the threshold — no manual reset needed.
+There's no point prefetching a row the user scrolls past in 20ms, and doing so anyway just stacks wasted requests on top of an already-fast scroll.
+
+**The Ping-Pong Pause problem (hysteresis):** real scrolling isn't a steady speed — thumb flicks and stop-start drags hover right around any single cutoff, so a one-threshold gate flips `prefetchPaused` true/false dozens of times a second as speed bounces 2.4 → 2.6 → 2.4 → 2.6. Every flip dispatches an action and re-renders every subscribed component — the UI stutters from its own state churn, not from data. The fix is **two thresholds instead of one**: pause above `2.5`, but only resume below `1.5`. Once paused, speed has to drop meaningfully — not just dip 0.1 under the pause line — before prefetching resumes, which closes the gap the jitter lives in. The numeric `scrollVelocity` readout (for a debug HUD) is dispatched on its own 100ms throttle, completely separate from the pause/resume decision, so cosmetic updates never interfere with the gating logic.
 
 **Frontend usage:**
 
@@ -2216,7 +2219,7 @@ dispatch(fetchPosts());
   loadingIds: [],       // ids currently being prefetched/fetched
 
   scrollVelocity: 0,     // px/ms, updated on every scroll event
-  prefetchPaused: false, // true while scrollVelocity > 2.5px/ms (the Scroll Velocity Gatekeeper)
+  prefetchPaused: false, // hysteresis-gated: true above 2.5px/ms, false again only below 1.5px/ms
 
   error: null,
 }
